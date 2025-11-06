@@ -32,6 +32,7 @@ const Auth = () => {
         loginMutation.mutate({ email, password }, {
           onSuccess: (userResponse) => {
             const userObj = {
+              id: userResponse.id,
               email: userResponse.email,
               nome: userResponse.name
             };
@@ -60,7 +61,7 @@ const Auth = () => {
 
         registerMutation.mutate({ name: nome, email, password }, {
           onSuccess: (userResponse) => {
-            const userObj = { email: userResponse.email, nome: userResponse.name };
+            const userObj = { id: userResponse.id, email: userResponse.email, nome: userResponse.name };
             localStorage.setItem("user", JSON.stringify(userObj));
 
             toast({ title: "Conta criada com sucesso!" });

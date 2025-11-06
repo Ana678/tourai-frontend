@@ -253,3 +253,35 @@ export const useGetPosts = (quantity: number = 3) => {
         },
     });
 }
+
+export const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('arquivo', file);
+
+    const response = await api.post<string>('/arquivos/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
+}
+
+export const createPost = async (data: CreatePost): Promise<PostResponse> => {
+    const { userId, ...postData } = data; 
+    const response = await api.post<PostResponse>('/posts', postData, {
+        params: { userId }
+    });
+    return response.data;
+}
+
+
+export const useCreatePost = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation<PostResponse, Error, CreatePost>({
+        mutationFn: createPost,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+        },
+    });
+}

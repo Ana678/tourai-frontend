@@ -1,17 +1,16 @@
-import { Fragment } from "react";
 import { Plus } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-
 import { useGetPosts } from "@/services/api/postsService";
 import { PostCard } from "@/components/layout/PostCard"; 
-
-const LOGGED_IN_USER_ID = 1; // !! IMPORTANTE: Substitua isso pelo seu ID de usuário real
+import { CreatePostDialog } from "@/components/layout/CreatePostDialog"; 
+import { useAuth } from "@/hooks/useAuth";
 
 const Posts = () => {
-  const { toast } = useToast();
+
+  const { user } = useAuth();
+
+  console.log("Current User in Posts:", user);
 
   const {
     data, 
@@ -47,12 +46,12 @@ const Posts = () => {
               Compartilhe suas experiências de viagem
             </p>
           </div>
-          <Button asChild className="gap-2">
-            <Link to="/posts/new">
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Nova Postagem</span>
-            </Link>
-          </Button>
+          <CreatePostDialog currentUserId={user?.id}>
+            <Button className="gap-2">
+                <Plus className="w-4 h-1" />
+                <span className="hidden sm:inline">Nova Postagem</span>
+            </Button>
+          </CreatePostDialog>
         </div>
       </div>
 
@@ -66,7 +65,7 @@ const Posts = () => {
             <PostCard 
               key={post.id} 
               post={post} 
-              currentUserId={LOGGED_IN_USER_ID} 
+              currentUserId={user?.id} 
             />
           ))
         )}
