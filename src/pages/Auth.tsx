@@ -17,25 +17,20 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // 2. Inicializar as mutações
   const registerMutation = useRegisterUser();
   const loginMutation = useLoginUser();
 
-  // 3. Obter o estado de loading de ambas as mutações
   const isLoading = registerMutation.isPending || loginMutation.isPending;
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    // A lógica de setLoading é gerenciada pelo isLoading acima
 
     try {
       if (isLogin) {
-        // --- LÓGICA DE LOGIN (ATUALIZADA) ---
         if (!email || !password) throw new Error("Preencha email e senha");
 
         loginMutation.mutate({ email, password }, {
           onSuccess: (userResponse) => {
-            // 'userResponse' é o objeto UserResponse retornado pela API
             const userObj = {
               email: userResponse.email,
               nome: userResponse.name
@@ -46,25 +41,25 @@ const Auth = () => {
             navigate("/");
           },
           onError: (error: any) => {
-            // A resposta de erro 401 (Unauthorized) do backend cairá aqui
-            const errorMsg = error.response?.status === 401
-              ? "Email ou senha incorretos."
-              : error.message;
+
+            const responseData = error?.response?.data;
+            const errorMsg =
+            (typeof responseData === "object" && (responseData.body || responseData.message)) ||
+            (typeof responseData === "string" && responseData) ||
+            error?.message ||
+            String(error);
             toast({
-              title: "Erro no Login",
-              description: errorMsg,
-              variant: "destructive",
+                title: "Erro no Login",
+                description: String(errorMsg || "Não foi possível realizar o login."),
+                variant: "destructive",
             });
           }
         });
 
       } else {
-        // --- LÓGICA DE REGISTRO ---
-        if (!nome || !email || !password) throw new Error("Preencha nome, email e senha");
 
         registerMutation.mutate({ name: nome, email, password }, {
           onSuccess: (userResponse) => {
-            // userResponse é o UserResponse do backend
             const userObj = { email: userResponse.email, nome: userResponse.name };
             localStorage.setItem("user", JSON.stringify(userObj));
 
@@ -139,7 +134,7 @@ const Auth = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              disabled={isLoading} // 4. Desabilitar inputs durante o loading
+              disabled={isLoading}
             />
           </div>
 
@@ -153,7 +148,7 @@ const Auth = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              disabled={isLoading} // 4. Desabilitar inputs durante o loading
+              disabled={isLoading}
             />
           </div>
 
@@ -167,7 +162,7 @@ const Auth = () => {
             type="button"
             onClick={() => setIsLogin(!isLogin)}
             className="text-primary hover:underline"
-            disabled={isLoading} // 4. Desabilitar toggle durante o loading
+            disabled={isLoading}
           >
             {isLogin
               ? "Não tem conta? Cadastre-se"
