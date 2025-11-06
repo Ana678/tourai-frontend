@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
+import Posts from "./pages/Posts";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,16 @@ const App = () => (
               <ProtectedRoute>
                 <MobileLayout>
                   <Home />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/postagens"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <Posts />
                 </MobileLayout>
               </ProtectedRoute>
             }
