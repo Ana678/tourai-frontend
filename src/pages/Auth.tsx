@@ -7,41 +7,98 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Plane } from "lucide-react";
 
+import { useLoginUser, useRegisterUser } from "@/services/api/authService";
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // 2. Inicializar as mutações
+  const registerMutation = useRegisterUser();
+  const loginMutation = useLoginUser();
+
+  // 3. Obter o estado de loading de ambas as mutações
+  const isLoading = registerMutation.isPending || loginMutation.isPending;
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    // A lógica de setLoading é gerenciada pelo isLoading acima
+
     try {
-      // Stub local: salvar usuário em localStorage para desenvolvimento
       if (isLogin) {
+        // --- LÓGICA DE LOGIN (ATUALIZADA) ---
         if (!email || !password) throw new Error("Preencha email e senha");
-        const userObj = { email, nome: nome || "" };
-        localStorage.setItem("user", JSON.stringify(userObj));
-        toast({ title: "Login realizado com sucesso!" });
-        navigate("/");
+
+        loginMutation.mutate({ email, password }, {
+          onSuccess: (userResponse) => {
+            // 'userResponse' é o objeto UserResponse retornado pela API
+            const userObj = {
+              email: userResponse.email,
+              nome: userResponse.name
+            };
+            localStorage.setItem("user", JSON.stringify(userObj));
+
+            toast({ title: "Login realizado com sucesso!" });
+            navigate("/");
+          },
+          onError: (error: any) => {
+            // A resposta de erro 401 (Unauthorized) do backend cairá aqui
+            const errorMsg = error.response?.status === 401
+              ? "Email ou senha incorretos."
+              : error.message;
+            toast({
+              title: "Erro no Login",
+              description: errorMsg,
+              variant: "destructive",
+            });
+          }
+        });
+
       } else {
+        // --- LÓGICA DE REGISTRO ---
         if (!nome || !email || !password) throw new Error("Preencha nome, email e senha");
-        const userObj = { email, nome };
-        localStorage.setItem("user", JSON.stringify(userObj));
-        toast({ title: "Conta criada com sucesso!" });
-        navigate("/");
+
+        registerMutation.mutate({ name: nome, email, password }, {
+          onSuccess: (userResponse) => {
+            // userResponse é o UserResponse do backend
+            const userObj = { email: userResponse.email, nome: userResponse.name };
+            localStorage.setItem("user", JSON.stringify(userObj));
+
+            toast({ title: "Conta criada com sucesso!" });
+            navigate("/");
+          },
+          onError: (error: any) => {
+            const responseData = error?.response?.data;
+            const errorMsg =
+            (typeof responseData === "object" && (responseData.body || responseData.message)) ||
+            (typeof responseData === "string" && responseData) ||
+            error?.message ||
+            String(error);
+            toast({
+                title: "Erro no Cadastro",
+                description: String(errorMsg || "Não foi possível criar a conta."),
+                variant: "destructive",
+            });
+          }
+        });
       }
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: String(error?.message || error),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+        const responseData = error?.response?.data;
+        const errorMsg =
+        (typeof responseData === "object" && (responseData.body || responseData.message)) ||
+        (typeof responseData === "string" && responseData) ||
+        error?.message ||
+        String(error);
+
+        toast({
+            title: "Erro",
+            description: String(errorMsg),
+            variant: "destructive",
+        });
     }
   };
 
@@ -68,6 +125,7 @@ const Auth = () => {
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
           )}
@@ -81,6 +139,7 @@ const Auth = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={isLoading} // 4. Desabilitar inputs durante o loading
             />
           </div>
 
@@ -94,11 +153,12 @@ const Auth = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              disabled={isLoading} // 4. Desabilitar inputs durante o loading
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
           </Button>
         </form>
 
@@ -107,6 +167,7 @@ const Auth = () => {
             type="button"
             onClick={() => setIsLogin(!isLogin)}
             className="text-primary hover:underline"
+            disabled={isLoading} // 4. Desabilitar toggle durante o loading
           >
             {isLogin
               ? "Não tem conta? Cadastre-se"
