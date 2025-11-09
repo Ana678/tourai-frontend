@@ -9,13 +9,20 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
 import Posts from "./pages/Posts";
+import Itineraries from "./pages/Itineraries";
+import CreateItinerary from "./pages/CreateItinerary";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Carregando...
+      </div>
+    );
 
   if (!user) return <Navigate to="/auth" replace />;
 
@@ -46,6 +53,26 @@ const App = () => (
               <ProtectedRoute>
                 <MobileLayout>
                   <Posts />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/itinerarios"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <Itineraries />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roteiros/:id/criar-itinerario"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <CreateItinerary />
                 </MobileLayout>
               </ProtectedRoute>
             }
