@@ -11,8 +11,8 @@ import { useAuth } from "./hooks/useAuth";
 import Posts from "./pages/Posts";
 import Itineraries from "./pages/Itineraries";
 import CreateItinerary from "./pages/CreateItinerary";
-
-const queryClient = new QueryClient();
+import { queryClient } from "./services/api/api";
+import Itinerary from "./pages/Itinerary";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -73,6 +73,16 @@ const App = () => (
               <ProtectedRoute>
                 <MobileLayout>
                   <CreateItinerary />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/itinerarios/:id"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <Itinerary />
                 </MobileLayout>
               </ProtectedRoute>
             }
