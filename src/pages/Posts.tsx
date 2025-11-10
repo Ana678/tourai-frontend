@@ -55,7 +55,7 @@ const Posts = () => {
         </div>
       </div>
 
-      <div className="p-4 sm:px-6 max-w-2xl mx-auto space-y-6">
+      <div className="p-4 sm:px-6 max-w-5xl mx-auto space-y-6">
         {posts.length === 0 && !isLoading ? ( 
           <Card className="p-8 text-center">
             <p className="text-muted-foreground">Nenhuma publicação ainda</p>
