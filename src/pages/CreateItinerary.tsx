@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, GripVertical, Clock, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,25 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateItinerary } from "@/services/api/itinerariesService";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/services/api/api";
+
+type Atividade = {
+  id: number;
+  name: string;
+  description?: string;
+  location?: string;
+  media_url?: string;
+  tags?: string[];
+};
+
+type RoteiroResponse = {
+  id: number;
+  title: string;
+  description?: string;
+  tags?: string[];
+  activities: Atividade[];
+};
 
 const Activity = ({
   name,
@@ -67,61 +86,28 @@ const Activity = ({
   );
 };
 
-const roadmap = {
-  id: 1,
-  title: "Minhas Férias em Natal",
-  description: null,
-  tags: [],
-  visibility: "PUBLIC",
-  status: "PENDING",
-  owner: {
-    id: 1,
-    name: "Ádisson",
-    email: "adisson@gmail.com",
-  },
-  activities: [
-    {
-      id: 5,
-      name: "Feirinha de Ponta Negra",
-      description: null,
-      location: "Praça da Praia de Ponta Negra",
-      mediaUrl: null,
-      tags: ["compras", "artesanato"],
-      type: "CUSTOM_PUBLIC",
-      moderationStatus: "PENDING",
-      creator: {
-        id: 1,
-        name: "Ádisson",
-        email: "adisson@gmail.com",
-      },
-    },
-    {
-      id: 4,
-      name: "Museu Câmara Cascudo",
-      description: null,
-      location: "Av. Hermes da Fonseca, 1398 - Tirol, Natal - RN",
-      mediaUrl: null,
-      tags: ["história", "cultura", "museu"],
-      type: "SYSTEM",
-      moderationStatus: "APPROVED",
-      creator: null,
-    },
-  ],
-};
-
 const CreateItinerary = () => {
-  //const { id } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { mutate: createItinerary } = useCreateItinerary();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activitiesTimes, setActivitiesTimes] = useState<
     { time: string; day: number }[]
   >([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const { data: roadmap, isLoading } = useQuery<RoteiroResponse>({
+    queryKey: ["roteiro", id, user?.id],
+    queryFn: async () => {
+      const response = await api.get(`/roadmaps/${id}`, {
+        params: { userId: user?.id },
+      });
+      return response.data;
+    },
+    enabled: !!id && !!user?.id,
+  });
 
   const handleTimeChange = (index: number, time: string) => {
     setActivitiesTimes((items) => {
@@ -187,6 +173,8 @@ const CreateItinerary = () => {
       return { activityId: item.id, time: date.toISOString() };
     });
 
+    setSaving(true);
+
     createItinerary(
       { roadmapId: roadmap.id, userId: user.id, activities: mappedActivities },
       {
@@ -203,12 +191,19 @@ const CreateItinerary = () => {
             variant: "destructive",
           });
         },
+        onSettled: () => {
+          setSaving(false);
+        },
       }
     );
   };
 
-  if (loading) {
+  if (!user || isLoading) {
     return <div className="min-h-screen p-6">Carregando...</div>;
+  }
+
+  if (!roadmap || !roadmap?.activities?.length) {
+    return <Navigate to="/roteiros" replace />;
   }
 
   return (
@@ -217,7 +212,7 @@ const CreateItinerary = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate("/roadmaps")}
+          onClick={() => navigate("/roteiros")}
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
