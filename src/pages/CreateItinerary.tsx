@@ -1,22 +1,31 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, GripVertical, Clock, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateItinerary } from "@/services/api/itinerariesService";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/services/api/api";
 
-type ActivityState = {
-  activityId: number;
-  time: string;
-  dayNumber: number;
+type Atividade = {
+  id: number;
+  name: string;
+  description?: string;
+  location?: string;
+  media_url?: string;
+  tags?: string[];
 };
 
-type Roteiro = {
-  id: string;
-  titulo: string;
-  descricao: string | null;
+type RoteiroResponse = {
+  id: number;
+  title: string;
+  description?: string;
+  tags?: string[];
+  activities: Atividade[];
 };
 
 const Activity = ({
@@ -77,59 +86,28 @@ const Activity = ({
   );
 };
 
-const roteiro = {
-  id: 1,
-  title: "Minhas Férias em Natal",
-  description: null,
-  tags: [],
-  visibility: "PUBLIC",
-  status: "PENDING",
-  owner: {
-    id: 1,
-    name: "Ádisson",
-    email: "adisson@gmail.com",
-  },
-  activities: [
-    {
-      id: 5,
-      name: "Feirinha de Ponta Negra",
-      description: null,
-      location: "Praça da Praia de Ponta Negra",
-      mediaUrl: null,
-      tags: ["compras", "artesanato"],
-      type: "CUSTOM_PUBLIC",
-      moderationStatus: "PENDING",
-      creator: {
-        id: 1,
-        name: "Ádisson",
-        email: "adisson@gmail.com",
-      },
-    },
-    {
-      id: 4,
-      name: "Museu Câmara Cascudo",
-      description: null,
-      location: "Av. Hermes da Fonseca, 1398 - Tirol, Natal - RN",
-      mediaUrl: null,
-      tags: ["história", "cultura", "museu"],
-      type: "SYSTEM",
-      moderationStatus: "APPROVED",
-      creator: null,
-    },
-  ],
-};
-
 const CreateItinerary = () => {
-  //const { id } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { mutate: createItinerary } = useCreateItinerary();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activitiesTimes, setActivitiesTimes] = useState<
     { time: string; day: number }[]
   >([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const { data: roadmap, isLoading } = useQuery<RoteiroResponse>({
+    queryKey: ["roteiro", id, user?.id],
+    queryFn: async () => {
+      const response = await api.get(`/roadmaps/${id}`, {
+        params: { userId: user?.id },
+      });
+      return response.data;
+    },
+    enabled: !!id && !!user?.id,
+  });
 
   const handleTimeChange = (index: number, time: string) => {
     setActivitiesTimes((items) => {
@@ -168,10 +146,64 @@ const CreateItinerary = () => {
     return days > 0 ? days : 1;
   }, [startDate, endDate]);
 
-  const handleSave = async () => {};
+  const handleSave = () => {
+    if (
+      !startDate ||
+      !endDate ||
+      roadmap.activities.some((_, index) => !activitiesTimes[index]?.time)
+    ) {
+      toast({
+        title: "Preencha todos os campos!",
+        variant: "destructive",
+      });
 
-  if (loading) {
+      return;
+    }
+
+    const mappedActivities = roadmap.activities.map((item, index) => {
+      const { day = 1, time } = activitiesTimes[index];
+
+      const [hours, minutes] = time.split(":").map(Number);
+
+      const date = new Date(startDate);
+      date.setHours(date.getHours() + 3);
+      date.setDate(date.getDate() + day - 1);
+      date.setHours(hours, minutes);
+
+      return { activityId: item.id, time: date.toISOString() };
+    });
+
+    setSaving(true);
+
+    createItinerary(
+      { roadmapId: roadmap.id, userId: user.id, activities: mappedActivities },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Itinerário criado com sucesso!",
+          });
+
+          navigate("/itinerarios");
+        },
+        onError: () => {
+          toast({
+            title: "Erro inesperado ao criar itinerário.",
+            variant: "destructive",
+          });
+        },
+        onSettled: () => {
+          setSaving(false);
+        },
+      }
+    );
+  };
+
+  if (!user || isLoading) {
     return <div className="min-h-screen p-6">Carregando...</div>;
+  }
+
+  if (!roadmap || !roadmap?.activities?.length) {
+    return <Navigate to="/roteiros" replace />;
   }
 
   return (
@@ -188,7 +220,7 @@ const CreateItinerary = () => {
           <h1 className="text-2xl sm:text-3xl font-bold">
             Converter em Itinerário
           </h1>
-          <p className="text-muted-foreground mt-1">{roteiro?.title}</p>
+          <p className="text-muted-foreground mt-1">{roadmap?.title}</p>
         </div>
       </div>
 
@@ -217,7 +249,7 @@ const CreateItinerary = () => {
 
       <div className="space-y-3">
         <h2 className="font-semibold">activities - Arraste para reordenar</h2>
-        {roteiro.activities.map((activity, index) => (
+        {roadmap.activities.map((activity, index) => (
           <Activity
             key={activity.id}
             day={activitiesTimes[index]?.day}

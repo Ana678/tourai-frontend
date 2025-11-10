@@ -5,43 +5,106 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-
-type Itinerario = {
-  id: string;
-  titulo: string;
-  local: string | null;
-  data_inicio: string;
-  dias: number;
-  activities: number;
-  status: string;
-};
+import {
+  ItineraryDTO,
+  useGetItineraries,
+} from "@/services/api/itinerariesService";
+import { useAuth } from "@/hooks/useAuth";
 
 const Itineraries = () => {
   const navigate = useNavigate();
-  const [Itineraries, setItineraries] = useState<Itinerario[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { data: itineraries, isLoading } = useGetItineraries({
+    userId: user?.id,
+  });
   const { toast } = useToast();
 
-  if (loading) {
+  if (isLoading) {
     return <div className="min-h-screen p-6">Carregando...</div>;
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStartDate = (itinerary: ItineraryDTO) => {
+    return itinerary.activities.reduce<Date>((acc, curr) => {
+      if (
+        acc === null ||
+        new Date(acc).getTime() > new Date(curr.time).getTime()
+      ) {
+        return new Date(curr.time);
+      }
+
+      return acc;
+    }, null);
+  };
+
+  const getEndDate = (itinerary: ItineraryDTO) => {
+    return itinerary.activities.reduce<Date>((acc, curr) => {
+      if (
+        acc === null ||
+        new Date(acc).getTime() < new Date(curr.time).getTime()
+      ) {
+        return new Date(curr.time);
+      }
+
+      return acc;
+    }, null);
+  };
+
+  const getTotalDays = (itinerary: ItineraryDTO) => {
+    const startDate = getStartDate(itinerary);
+    const endDate = getEndDate(itinerary);
+
+    if (!startDate || !endDate) {
+      return 0;
+    }
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    const diffMs = endDate.getTime() - startDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    return Math.ceil(diffDays) + 1;
+  };
+
+  const getStatus = (
+    itinerary: ItineraryDTO
+  ): "planned" | "in_progress" | "concluded" => {
+    const startDate = getStartDate(itinerary);
+
+    if (!startDate) {
+      return null;
+    }
+
+    if (
+      new Date().getTime() < new Date(startDate).getTime() &&
+      itinerary.activities.every((item) => !item.completed)
+    ) {
+      return "planned";
+    } else if (itinerary.activities.some((item) => !item.completed)) {
+      return "in_progress";
+    } else {
+      return "concluded";
+    }
+  };
+
+  const getStatusBadge = (itinerary: ItineraryDTO) => {
+    const status = getStatus(itinerary);
+
     switch (status) {
-      case "concluido":
-        return (
-          <Badge className="bg-secondary text-secondary-foreground">
-            Concluído
-          </Badge>
-        );
-      case "em_andamento":
+      case "planned":
+        return <Badge variant="outline">Planejado</Badge>;
+      case "in_progress":
         return (
           <Badge className="bg-accent text-accent-foreground">
             Em andamento
           </Badge>
         );
-      case "planejado":
-        return <Badge variant="outline">Planejado</Badge>;
+      case "concluded":
+        return (
+          <Badge className="bg-secondary text-secondary-foreground">
+            Concluído
+          </Badge>
+        );
       default:
         return null;
     }
@@ -59,10 +122,11 @@ const Itineraries = () => {
 
       {/* Lista de itinerários */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Itineraries.map((itinerario) => (
+        {itineraries?.map((itinerary) => (
           <Card
-            key={itinerario.id}
-            className="overflow-hidden hover:shadow-medium transition-smooth h-full"
+            key={itinerary.id}
+            className="overflow-hidden hover:shadow-medium transition-smooth h-full cursor-pointer"
+            onClick={() => navigate(`/itinerarios/${itinerary.id}`)}
           >
             <div className="h-32 gradient-primary flex items-center justify-center">
               <Calendar className="w-12 h-12 text-primary-foreground" />
@@ -72,43 +136,26 @@ const Itineraries = () => {
               <div>
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-lg line-clamp-1">
-                    {itinerario.titulo}
+                    {itinerary.roadmap.title}
                   </h3>
-                  {getStatusBadge(itinerario.status)}
+                  {getStatusBadge(itinerary)}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {itinerario.local || "Local não definido"}
-                </p>
               </div>
 
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  <span>{itinerario.dias} dias</span>
+                  <span>{getTotalDays(itinerary)} dia(s)</span>
                 </div>
                 <span>•</span>
-                <span>{itinerario.activities} atividades</span>
+                <span>{itinerary.activities.length} atividade(s)</span>
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-border">
                 <span className="text-xs text-muted-foreground">
-                  Início: {itinerario.data_inicio}
+                  Início:{" "}
+                  {getStartDate(itinerary)?.toLocaleDateString("pt-BR") ?? "-"}
                 </span>
-                {(itinerario.status === "planejado" ||
-                  itinerario.status === "em_andamento") && (
-                  <Button
-                    size="sm"
-                    className="gap-2"
-                    onClick={() =>
-                      navigate(`/Itineraries/${itinerario.id}/executar`)
-                    }
-                  >
-                    <Play className="w-4 h-4" />
-                    {itinerario.status === "planejado"
-                      ? "Começar"
-                      : "Continuar"}
-                  </Button>
-                )}
               </div>
             </div>
           </Card>
@@ -116,7 +163,7 @@ const Itineraries = () => {
       </div>
 
       {/* Empty state */}
-      {Itineraries.length === 0 && (
+      {!itineraries?.length && (
         <Card className="p-8 text-center space-y-4 border-dashed">
           <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
             <Calendar className="w-8 h-8 text-muted-foreground" />

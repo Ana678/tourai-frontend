@@ -1,10 +1,16 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send } from "lucide-react";
+import { Heart, MessageCircle, Send } from "lucide-react"; 
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog"; 
 
 import { PostResponse } from "@/services/api/postsService";
 
@@ -18,14 +24,13 @@ import {
 
 interface PostCardProps {
   post: PostResponse;
-  currentUserId: number; 
+  currentUserId: number;
 }
 
 export const PostCard = ({ post, currentUserId }: PostCardProps) => {
   const { toast } = useToast();
   const [commentText, setCommentText] = useState("");
   const [showComments, setShowComments] = useState(false);
-
 
   const { data: hasLiked, isLoading: isLoadingLike } = useHasUserLiked(
     post.id,
@@ -52,7 +57,7 @@ export const PostCard = ({ post, currentUserId }: PostCardProps) => {
     hasNextPage,
     isFetchingNextPage,
   } = useGetComments(post.id);
-  
+
 
   const { mutate: createComment, isPending: isCreatingComment } = useCreateComment();
 
@@ -66,15 +71,15 @@ export const PostCard = ({ post, currentUserId }: PostCardProps) => {
       content: commentText,
     }, {
       onSuccess: () => {
-        setCommentText(""); 
-        setShowComments(true); 
+        setCommentText("");
+        setShowComments(true);
       },
       onError: () => {
         toast({ title: "Erro ao enviar comentário", variant: "destructive" });
       }
     });
   };
-  
+
   const comments = commentsData?.pages.flatMap((page) => page) ?? [];
 
   return (
@@ -95,14 +100,25 @@ export const PostCard = ({ post, currentUserId }: PostCardProps) => {
       <div className="px-4 pb-3">
         <p className="text-sm">{post.content}</p>
       </div>
-      {post.mediaUrl && (
-        <img
-          src={post.mediaUrl}
-          alt="Post"
-          className="w-full object-cover max-h-96"
-        />
-      )}
 
+      {post.mediaUrl && (
+        <Dialog>
+          <DialogTrigger asChild>
+            <img
+              src={post.mediaUrl}
+              alt="Post"
+              className="w-full object-cover max-h-96 cursor-pointer" 
+            />
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-3xl p-0 border-0">
+            <img
+              src={post.mediaUrl}
+              alt="Post"
+              className="w-full h-auto object-contain max-h-[90vh] rounded-lg"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
       <div className="px-4 py-3 flex items-center gap-4 border-b border-border">
         <Button
           variant="ghost"
@@ -111,16 +127,16 @@ export const PostCard = ({ post, currentUserId }: PostCardProps) => {
           onClick={handleLikeClick}
           disabled={isLoadingLike}
         >
-          <Heart 
-            className={`w-5 h-5 ${hasLiked ? 'text-red-500 fill-red-500' : ''}`} 
+          <Heart
+            className={`w-5 h-5 ${hasLiked ? 'text-red-500 fill-red-500' : ''}`}
           />
           <span className="text-sm">{post.totalLikes || 0}</span>
         </Button>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="gap-2"
-          onClick={() => setShowComments(!showComments)} 
+          onClick={() => setShowComments(!showComments)}
         >
           <MessageCircle className="w-5 h-5" />
           <span className="text-sm">{post.totalComments || 0}</span>
@@ -143,7 +159,7 @@ export const PostCard = ({ post, currentUserId }: PostCardProps) => {
 
           <div className="space-y-3">
             {isLoadingComments && <p className="text-xs text-muted-foreground">Carregando comentários...</p>}
-            
+
             {comments.map(comment => (
               <div key={comment.id} className="flex gap-2 text-sm">
                 <Avatar className="w-6 h-6">
@@ -156,7 +172,7 @@ export const PostCard = ({ post, currentUserId }: PostCardProps) => {
                 </div>
               </div>
             ))}
-            
+
             {hasNextPage && (
               <Button
                 variant="link"

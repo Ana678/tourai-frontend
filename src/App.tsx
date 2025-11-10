@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MobileLayout from "./components/layout/MobileLayout";
 import Home from "./pages/Home";
@@ -11,12 +11,20 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import Posts from "./pages/Posts";
 import Itineraries from "./pages/Itineraries";
+import Itinerary from "./pages/Itinerary";
 import CreateItinerary from "./pages/CreateItinerary";
 import AvaliarItinerario from "./pages/AvaliarItinerarioMockado";
 
 import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
+import { queryClient } from "./services/api/api";
+import Roteiros from "./pages/Roteiros";
+import NovoRoteiro from "./pages/NovoRoteiro";
+import EditarRoteiro from "./pages/EditarRoteiro";
+import Atividades from "./pages/Atividades";
+import NovaAtividade from "./pages/NovaAtividade";
+import EditarAtividade from "./pages/EditarAtividade";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -95,16 +103,89 @@ const App = () => (
                 }
             />
             <Route
-                path="/roteiros/:id/criar-itinerario"
+                path="/itinerarios/:id"
                 element={
                 <ProtectedRoute>
                     <MobileLayout>
-                    <CreateItinerary />
+                    <Itinerary />
                     </MobileLayout>
                 </ProtectedRoute>
                 }
             />
-            <Route path="*" element={<NotFound />} />
+
+        <Route
+            path="/roteiros/:id/criar-itinerario"
+            element={
+            <ProtectedRoute>
+                <MobileLayout>
+                <CreateItinerary />
+                </MobileLayout>
+            </ProtectedRoute>
+            }
+        />
+
+        <Route
+            path="/roteiros"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <Roteiros />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roteiros/novo"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <NovoRoteiro />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roteiros/:id/editar"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <EditarRoteiro />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/atividades"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <Atividades />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/atividades/nova"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <NovaAtividade />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/atividades/:id/editar"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <EditarAtividade />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
