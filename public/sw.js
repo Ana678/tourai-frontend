@@ -1,4 +1,4 @@
-const CACHE_NAME = 'roteiros-viagem-v1';
+const CACHE_NAME = 'tourai-v1';
 const urlsToCache = [
   '/',
   '/index.html',

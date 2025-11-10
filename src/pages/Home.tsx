@@ -10,21 +10,21 @@ const Home = () => {
   ];
 
   const shortcuts = [
-    { 
-      icon: Plus, 
-      label: "Criar Roteiro", 
+    {
+      icon: Plus,
+      label: "Criar Roteiro",
       path: "/roteiros/novo",
       gradient: "gradient-primary"
     },
-    { 
-      icon: Calendar, 
-      label: "Meus Itinerários", 
+    {
+      icon: Calendar,
+      label: "Meus Itinerários",
       path: "/itinerarios",
       gradient: "gradient-hero"
     },
-    { 
-      icon: MessageSquare, 
-      label: "Postagens", 
+    {
+      icon: MessageSquare,
+      label: "Postagens",
       path: "/postagens",
       gradient: "gradient-primary"
     },
@@ -51,7 +51,7 @@ const Home = () => {
             return (
               <Link key={shortcut.label} to={shortcut.path}>
                 <Card className={`${shortcut.gradient} p-6 hover:shadow-medium transition-smooth cursor-pointer h-full`}>
-                  <div className="flex flex-col items-center text-center gap-3 text-primary-foreground">
+                  <div className="flex flex items-center text-center gap-3 text-primary-foreground">
                     <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                       <Icon className="w-6 h-6" />
                     </div>
@@ -86,8 +86,8 @@ const Home = () => {
                   </div>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${
-                  itinerary.status === "Concluído" 
-                    ? "bg-secondary/20 text-secondary" 
+                  itinerary.status === "Concluído"
+                    ? "bg-secondary/20 text-secondary"
                     : "bg-accent/20 text-accent"
                 }`}>
                   {itinerary.status}

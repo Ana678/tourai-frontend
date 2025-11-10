@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
   const location = useLocation();
-  
+
   const navItems = [
     { path: "/", icon: Home, label: "Início" },
     { path: "/roteiros", icon: Map, label: "Roteiros" },
@@ -21,21 +21,21 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
             <Map className="w-6 h-6 text-primary" />
-            <h1 className="text-lg font-bold text-foreground hidden sm:block">Roteiros de Viagem</h1>
+            <h1 className="text-lg font-bold text-foreground hidden sm:block">TourAI</h1>
           </div>
-          
+
           <nav className="flex items-center gap-1 sm:gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
-              
+
               return (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-smooth ${
-                    active 
-                      ? "bg-primary/10 text-primary" 
+                    active
+                      ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
