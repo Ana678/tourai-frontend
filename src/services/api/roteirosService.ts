@@ -1,13 +1,10 @@
-// src/services/api/roteirosService.ts
 import { api } from './api';
-
-// --- Tipos ---
 
 export type Roteiro = {
   id: string;
   title: string;
   description: string | null;
-  tags?: string[]; // Tags do ROTEIRO
+  tags?: string[];
   activities: number;
 };
 
@@ -17,21 +14,18 @@ export type Atividade = {
   description: string | null;
   location: string;
   media_url: string | null;
-  tags?: string[]; // Tags da ATIVIDADE
+  tags?: string[];
 };
 
 export type CreateRoteiroDTO = {
   title: string;
   description: string;
   atividades: string[];
-  tags?: string[]; // Tags do ROTEIRO
+  tags?: string[];
   visibility?: string;
   user_id: string | number;
 };
 
-/**
- * Busca os roteiros de UM usuário.
- */
 export const fetchRoteiros = async (userId: string | number): Promise<Roteiro[]> => {
   if (!userId) return [];
   try {
@@ -43,7 +37,7 @@ export const fetchRoteiros = async (userId: string | number): Promise<Roteiro[]>
       id: roteiro.id,
       title: roteiro.title,
       description: roteiro.description,
-      tags: roteiro.tags || [], // Tags do ROTEIRO
+      tags: roteiro.tags || [],
       activities: roteiro.activities?.length || 0,
     }));
     return roteirosFormatados;
@@ -54,9 +48,6 @@ export const fetchRoteiros = async (userId: string | number): Promise<Roteiro[]>
   }
 };
 
-/**
- * Busca todas as atividades públicas E as do usuário.
- */
 export const fetchAtividades = async (userId: string | number): Promise<Atividade[]> => {
   if (!userId) return [];
   try {
@@ -81,19 +72,15 @@ export const fetchAtividades = async (userId: string | number): Promise<Atividad
   }
 };
 
-/**
- * Cria um novo roteiro E ASSOCIA AS ATIVIDADES UMA A UMA.
- */
 export const createRoteiro = async (dto: CreateRoteiroDTO, userId: string | number) => {
   try {
-    // --- ETAPA 1: Criar o Roteiro (Roadmap) ---
     const roteiroResponse = await api.post('/roadmaps', {
       title: dto.title,
       description: dto.description,
       owner: { id: userId },
       visibility: dto.visibility || "PUBLIC",
       status: "APPROVED",
-      tags: dto.tags || [], // Tags do ROTEIRO
+      tags: dto.tags || [],
       activities: [],
     }, {
       params: { userId }
@@ -102,7 +89,6 @@ export const createRoteiro = async (dto: CreateRoteiroDTO, userId: string | numb
     const novoRoteiro = roteiroResponse.data;
     const roadmapId = novoRoteiro.id;
 
-    // --- ETAPA 2: Associar as Atividades ---
     if (dto.atividades && dto.atividades.length > 0) {
       const promessasDeAssociacao = dto.atividades.map(activityId => {
         return api.post(`/roadmaps/${roadmapId}/activities/${activityId}`, null, {
@@ -120,9 +106,6 @@ export const createRoteiro = async (dto: CreateRoteiroDTO, userId: string | numb
   }
 };
 
-/**
- * Deleta um roteiro.
- */
 export const deleteRoteiro = async (id: string, userId: string | number) => {
   if (!userId) throw new Error("User ID is required to delete.");
   try {
@@ -135,18 +118,13 @@ export const deleteRoteiro = async (id: string, userId: string | number) => {
   }
 };
 
-// --- FUNÇÕES DE ATIVIDADE ---
-
 export type CreateAtividadeDTO = {
   name: string;
   description: string;
   location: string;
-  tags?: string[]; // Tags da ATIVIDADE
+  tags?: string[];
 };
 
-/**
- * Cria uma nova atividade.
- */
 export const createAtividade = async (dto: CreateAtividadeDTO, userId: string | number) => {
   if (!userId) throw new Error("User ID is required to create.");
   try {
