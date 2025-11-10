@@ -6,18 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-
-type ActivityState = {
-  activityId: number;
-  time: string;
-  dayNumber: number;
-};
-
-type Roteiro = {
-  id: string;
-  titulo: string;
-  descricao: string | null;
-};
+import { useCreateItinerary } from "@/services/api/itinerariesService";
+import { useAuth } from "@/hooks/useAuth";
 
 const Activity = ({
   name,
@@ -77,7 +67,7 @@ const Activity = ({
   );
 };
 
-const roteiro = {
+const roadmap = {
   id: 1,
   title: "Minhas Férias em Natal",
   description: null,
@@ -122,6 +112,8 @@ const roteiro = {
 const CreateItinerary = () => {
   //const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { mutate: createItinerary } = useCreateItinerary();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -168,7 +160,52 @@ const CreateItinerary = () => {
     return days > 0 ? days : 1;
   }, [startDate, endDate]);
 
-  const handleSave = async () => {};
+  const handleSave = () => {
+    if (
+      !startDate ||
+      !endDate ||
+      roadmap.activities.some((_, index) => !activitiesTimes[index]?.time)
+    ) {
+      toast({
+        title: "Preencha todos os campos!",
+        variant: "destructive",
+      });
+
+      return;
+    }
+
+    const mappedActivities = roadmap.activities.map((item, index) => {
+      const { day = 1, time } = activitiesTimes[index];
+
+      const [hours, minutes] = time.split(":").map(Number);
+
+      const date = new Date(startDate);
+      date.setHours(date.getHours() + 3);
+      date.setDate(date.getDate() + day - 1);
+      date.setHours(hours, minutes);
+
+      return { activityId: item.id, time: date.toISOString() };
+    });
+
+    createItinerary(
+      { roadmapId: roadmap.id, userId: user.id, activities: mappedActivities },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Itinerário criado com sucesso!",
+          });
+
+          navigate("/itinerarios");
+        },
+        onError: () => {
+          toast({
+            title: "Erro inesperado ao criar itinerário.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  };
 
   if (loading) {
     return <div className="min-h-screen p-6">Carregando...</div>;
@@ -180,7 +217,7 @@ const CreateItinerary = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate("/roteiros")}
+          onClick={() => navigate("/roadmaps")}
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -188,7 +225,7 @@ const CreateItinerary = () => {
           <h1 className="text-2xl sm:text-3xl font-bold">
             Converter em Itinerário
           </h1>
-          <p className="text-muted-foreground mt-1">{roteiro?.title}</p>
+          <p className="text-muted-foreground mt-1">{roadmap?.title}</p>
         </div>
       </div>
 
@@ -217,7 +254,7 @@ const CreateItinerary = () => {
 
       <div className="space-y-3">
         <h2 className="font-semibold">activities - Arraste para reordenar</h2>
-        {roteiro.activities.map((activity, index) => (
+        {roadmap.activities.map((activity, index) => (
           <Activity
             key={activity.id}
             day={activitiesTimes[index]?.day}

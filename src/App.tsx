@@ -158,6 +158,16 @@ const App = () => (
             }
           />
 
+          <Route
+            path="/itinerarios/:id"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <Itinerary />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
