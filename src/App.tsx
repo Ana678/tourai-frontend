@@ -9,10 +9,18 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
 import Posts from "./pages/Posts";
-import Itineraries from "./pages/Itineraries";
+import Roteiros from "./pages/Roteiros";
+import NovoRoteiro from "./pages/NovoRoteiro"; 
+import Itineraries from "./pages/Itineraries"; 
 import CreateItinerary from "./pages/CreateItinerary";
+import EditarRoteiro from "./pages/EditarRoteiro";  
+import Atividades from "@/pages/Atividades";
+import NovaAtividade from "@/pages/NovaAtividade";
+import EditarAtividade from "@/pages/EditarAtividade";
 
 const queryClient = new QueryClient();
+
+// ... (imports e setup permanecem os mesmos)
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -58,11 +66,62 @@ const App = () => (
             }
           />
           <Route
-            path="/itinerarios"
+            path="/roteiros" 
             element={
               <ProtectedRoute>
                 <MobileLayout>
-                  <Itineraries />
+                  <Roteiros /> 
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roteiros/novo" 
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <NovoRoteiro />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+          path="/roteiros/:id/editar"
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <EditarRoteiro />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          {/* Rotas de Atividades CORRIGIDAS: Envolvidas por ProtectedRoute e MobileLayout */}
+          <Route 
+            path="/atividades" 
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <Atividades />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/atividades/nova" 
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <NovaAtividade />
+                </MobileLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/atividades/:id/editar" 
+            element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <EditarAtividade />
                 </MobileLayout>
               </ProtectedRoute>
             }
