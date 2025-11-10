@@ -140,3 +140,27 @@ export const createAtividade = async (dto: CreateAtividadeDTO, userId: string | 
     throw error;
   }
 };
+
+export const favoriteRoteiro = async (id: string, userId: string | number) => {
+  if (!userId) throw new Error("User ID is required to favorite.");
+  try {
+    await api.post(`/favorites/roadmaps/${id}`, null, {
+      params: { userId }
+    });
+  } catch (error) {
+    console.error("Erro ao favoritar roteiro:", error);
+    throw error;
+  }
+};
+
+export const unfavoriteRoteiro = async (id: string, userId: string | number) => {
+  if (!userId) throw new Error("User ID is required to unfavorite.");
+  try {
+    await api.delete(`/favorites/roadmaps/${id}`, {
+      params: { userId }
+    });
+  } catch (error) {
+    console.error("Erro ao desfavoritar roteiro:", error);
+    throw error;
+  }
+};
