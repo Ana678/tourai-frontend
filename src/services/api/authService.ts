@@ -1,7 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { api } from './api';
 
-// Interface atualizada para incluir os campos opcionais do backend
 export interface UserRegisterRequest {
   name: string;
   email: string;
@@ -15,7 +14,6 @@ export interface UserLoginRequest {
   password?: string;
 }
 
-// Interface atualizada para receber os campos completos do backend
 export interface UserResponse {
   id: number;
   name: string;
@@ -24,8 +22,6 @@ export interface UserResponse {
   bio?: string;
   interests?: string[];
 }
-
-// --- Funções de API ---
 
 const registerUser = async (data: UserRegisterRequest): Promise<UserResponse> => {
   const response = await api.post<UserResponse>('/users', data);
@@ -37,15 +33,10 @@ const loginUser = async (data: UserLoginRequest): Promise<UserResponse> => {
   return response.data;
 };
 
-// ADICIONADO: Função de atualização
-// A UserRegisterRequest serve bem aqui, pois o backend espera um UserRequest.java
 const updateUser = async ({ id, data }: { id: number, data: Omit<UserRegisterRequest, 'password'> }): Promise<UserResponse> => {
   const response = await api.put<UserResponse>(`/users/${id}`, data);
   return response.data;
 };
-
-
-// --- Hooks de Mutação ---
 
 export const useRegisterUser = () => {
   return useMutation<UserResponse, Error, UserRegisterRequest>({
@@ -59,7 +50,6 @@ export const useLoginUser = () => {
   });
 };
 
-// ADICIONADO: Hook de atualização
 export const useUpdateUser = () => {
   return useMutation<UserResponse, Error, { id: number, data: Omit<UserRegisterRequest, 'password'> }>({
     mutationFn: updateUser,

@@ -1,4 +1,3 @@
-// src/pages/Profile.tsx
 import { useEffect, useState } from "react";
 import { User, Map, Calendar, MessageSquare, Settings, LogOut, X, Edit, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -11,6 +10,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateUser } from "@/services/api/authService";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/services/api/api";
+
+
+type UserStatsResponse = {
+  roteiros: number;
+  itinerarios: number;
+  postagens: number;
+};
+
+const fetchUserStats = async (userId: number): Promise<UserStatsResponse> => {
+  const response = await api.get(`/users/${userId}/stats`);
+  return response.data;
+};
 
 const Profile = () => {
   const { user, signOut, updateUserInStorage } = useAuth();
@@ -27,18 +40,22 @@ const Profile = () => {
   });
   const [interesseInput, setInteresseInput] = useState("");
 
-  // --- Stats Mockados ---
-  // Os valores agora estão fixos e não vêm da API, como solicitado.
-  const [stats, setStats] = useState([
-    { label: "Roteiros", value: 3, icon: Map },
-    { label: "Itinerários", value: 1, icon: Calendar },
-    { label: "Postagens", value: 5, icon: MessageSquare },
-  ]);
+  const {
+    data: statsData,
+    isLoading: isLoadingStats,
+    isError: isErrorStats
+  } = useQuery<UserStatsResponse>({
+    queryKey: ["userStats", user?.id],
+    queryFn: () => fetchUserStats(user!.id),
+    enabled: !!user?.id,
+  });
 
-  // --- (Hooks de carregamento de estatísticas foram removidos) ---
+  const stats = [
+    { label: "Roteiros", value: statsData?.roteiros ?? 0, icon: Map },
+    { label: "Itinerários", value: statsData?.itinerarios ?? 0, icon: Calendar },
+    { label: "Postagens", value: statsData?.postagens ?? 0, icon: MessageSquare },
+  ];
 
-  // --- Sincronizar formulário de edição ---
-  // Reseta o formulário toda vez que o modal é aberto
   useEffect(() => {
     if (isEditing && user) {
       setEditData({
@@ -50,7 +67,6 @@ const Profile = () => {
     }
   }, [isEditing, user]);
 
-  // --- Funções do Formulário ---
   const addInteresse = () => {
     if (interesseInput.trim() && !editData.interesses.includes(interesseInput.trim())) {
       setEditData({ ...editData, interesses: [...editData.interesses, interesseInput.trim()] });
@@ -70,7 +86,7 @@ const Profile = () => {
         id: user.id,
         data: {
           name: editData.nome,
-          email: user.email, // O backend espera o email, mesmo que não seja alterado aqui
+          email: user.email,
           profilePhotoUrl: editData.avatar_url || undefined,
           bio: editData.bio || undefined,
           interests: editData.interesses.length > 0 ? editData.interesses : undefined,
@@ -78,9 +94,9 @@ const Profile = () => {
       },
       {
         onSuccess: (updatedUser) => {
-          updateUserInStorage(updatedUser); // Atualiza o usuário no localStorage e estado global
+          updateUserInStorage(updatedUser);
           toast({ title: "Perfil atualizado com sucesso!" });
-          setIsEditing(false); // Fecha o modal
+          setIsEditing(false);
         },
         onError: (error: any) => {
           const responseData = error?.response?.data;
@@ -99,8 +115,7 @@ const Profile = () => {
     );
   };
 
-  // --- Renderização ---
-  if (!user) {
+  if (!user || isLoadingStats) {
     return (
       <div className="min-h-screen p-6 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -108,16 +123,19 @@ const Profile = () => {
     );
   }
 
+  if (isErrorStats) {
+    toast({
+        title: "Erro ao carregar estatísticas",
+        description: "Não foi possível carregar os totais de roteiros, itinerários e postagens.",
+        variant: "destructive"
+    })
+  }
+
   return (
     <div className="min-h-screen bg-background pb-10">
       {/* Header com gradient */}
       <div className="gradient-primary p-6 sm:p-8 pb-20">
         <div className="flex justify-end gap-2">
-          {/* O botão de Configurações pode ser adicionado no futuro */}
-          {/* <Button variant="secondary" size="sm" className="gap-2">
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Configurações</span>
-          </Button> */}
           <Button variant="secondary" size="sm" className="gap-2" onClick={signOut}>
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Sair</span>

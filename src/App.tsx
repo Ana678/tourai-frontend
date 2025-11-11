@@ -13,11 +13,10 @@ import Posts from "./pages/Posts";
 import Itineraries from "./pages/Itineraries";
 import Itinerary from "./pages/Itinerary";
 import CreateItinerary from "./pages/CreateItinerary";
-import AvaliarItinerario from "./pages/AvaliarItinerarioMockado";
+import AvaliarItinerario from "./pages/AvaliarItinerario";
 
 import Profile from "./pages/Profile";
 
-const queryClient = new QueryClient();
 import { queryClient } from "./services/api/api";
 import Roteiros from "./pages/Roteiros";
 import NovoRoteiro from "./pages/NovoRoteiro";

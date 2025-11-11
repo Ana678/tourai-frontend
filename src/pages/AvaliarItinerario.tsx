@@ -1,26 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Star, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { Star, ArrowLeft, CheckCircle, Loader2, Edit } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 
 import {
   useGetItineraryDetails,
-  useCreateEvaluation,
-  useUpdateEvaluation,
   getEvaluation,
   evaluationKeys,
   EvaluationResponse,
 } from "@/services/api/evaluationService";
+import { EvaluationDialog } from "@/components/layout/EvaluationDialog";
 
 type AtividadeParaAvaliar = {
   id: number;
-  nome: string;
-  local: string | null;
+  name: string;
+  location: string | null;
   time: string;
   avaliacao?: EvaluationResponse | null;
 };
@@ -29,125 +27,64 @@ const AvaliarItinerario = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const [atividades, setAtividades] = useState<AtividadeParaAvaliar[]>([]);
-  const [selectedAtividade, setSelectedAtividade] = useState<number | null>(null);
-  const [nota, setNota] = useState(0);
-  const [comentario, setComentario] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedActivityForDialog, setSelectedActivityForDialog] = useState<AtividadeParaAvaliar | null>(null);
 
-  const { data: itinerario, isLoading: loadingItinerary } = useGetItineraryDetails(id!);
+  const itineraryId = id ? Number(id) : undefined;
 
-  //ids das atividades do itinerário
-  const activityIds = itinerario?.activities?.map((a) => a.id) || [];
+  const { data: itinerario, isLoading: loadingItinerary } = useGetItineraryDetails(itineraryId);
 
-  // 3. Busca as avaliações para cada atividade (N+1 queries, gerenciadas pelo useQueries)
+  const itineraryActivityIds = itinerario?.activities
+    ?.map((a) => a.id)
+    .filter((id): id is number => typeof id === 'number' && id > 0)
+    || [];
+
   const evaluationQueries = useQueries({
-    queries: activityIds.map((activityId) => ({
+    queries: itineraryActivityIds.map((activityId) => ({
       queryKey: evaluationKeys.detail(activityId),
       queryFn: () => getEvaluation(activityId),
       retry: (failureCount: number, error: any) => {
-        // Não tentar novamente em caso de 404 (avaliação não existe)
         if (error?.response?.status === 404) return false;
-        return failureCount < 2; // Tentar novamente 2x para outros erros
+        return failureCount < 2;
       },
     })),
   });
 
+  const isFetchingEvaluations = evaluationQueries.some((q) => q.isFetching);
   const isLoadingEvaluations = evaluationQueries.some((q) => q.isLoading);
+  const isInitialLoad = !itineraryId || loadingItinerary || (itineraryActivityIds.length > 0 && isLoadingEvaluations);
 
-  // 4. Mutações para criar e atualizar
-  const { mutate: createEvaluationMutate, isPending: isCreating } = useCreateEvaluation();
-  const { mutate: updateEvaluationMutate, isPending: isUpdating } = useUpdateEvaluation();
-  const saving = isCreating || isUpdating;
-
-  // 5. Efeito para mesclar os dados do itinerário e das avaliações
   useEffect(() => {
-    if (itinerario && !isLoadingEvaluations) {
+    if (itinerario && !isFetchingEvaluations) {
       const evaluationsMap = new Map<number, EvaluationResponse | null>();
       evaluationQueries.forEach((q, index) => {
         const activityId = itinerario.activities[index].id;
-        if (q.isSuccess) {
-          evaluationsMap.set(activityId, q.data);
-        } else {
-          evaluationsMap.set(activityId, null); // Marca como nulo se falhar (ex: 404)
-        }
+        evaluationsMap.set(activityId, q.data || null);
       });
 
       const formatted = itinerario.activities.map((ia) => ({
-        id: ia.id, // ID da ItineraryActivity
-        nome: ia.activity.nome,
-        local: ia.activity.local || null,
+        id: ia.id,
+        name: ia.activity.name,
+        location: ia.activity.location || null,
         time: ia.time,
         avaliacao: evaluationsMap.get(ia.id) || null,
       }));
       setAtividades(formatted);
     }
-  }, [itinerario, evaluationQueries, isLoadingEvaluations]);
+  }, [itinerario, isFetchingEvaluations]);
 
-  const handleSelectAtividade = (atividadeId: number) => {
-    const atividade = atividades.find((a) => a.id === atividadeId);
-    setSelectedAtividade(atividadeId);
-    setNota(atividade?.avaliacao?.rating || 0);
-    setComentario(atividade?.avaliacao?.comment || "");
+  const handleOpenDialog = (atividade: AtividadeParaAvaliar) => {
+    setSelectedActivityForDialog(atividade);
+    setDialogOpen(true);
   };
 
-  const handleSaveAvaliacao = async () => {
-    if (!selectedAtividade || nota === 0) {
-      toast({
-        title: "Avaliação incompleta",
-        description: "Por favor, selecione uma nota de 1 a 5",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const atividade = atividades.find((a) => a.id === selectedAtividade);
-    const evaluationData = { rating: nota, comment: comentario || undefined };
-
-    const mutationOptions = {
-      onSuccess: () => {
-        toast({
-          title: "Avaliação salva!",
-          description: "Sua avaliação foi registrada com sucesso",
-        });
-        // Invalida a query da avaliação para buscar dados frescos
-        queryClient.invalidateQueries({ queryKey: evaluationKeys.detail(selectedAtividade) });
-        setSelectedAtividade(null);
-        setNota(0);
-        setComentario("");
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Erro ao salvar avaliação",
-          description: error.message || "Não foi possível salvar sua avaliação.",
-          variant: "destructive",
-        });
-      },
-    };
-
-    if (atividade?.avaliacao) {
-      // Atualizar avaliação existente
-      updateEvaluationMutate({
-        itineraryActivityId: selectedAtividade,
-        data: evaluationData,
-      }, mutationOptions);
-    } else {
-      // Criar nova avaliação
-      createEvaluationMutate({
-        itineraryActivityId: selectedAtividade,
-        data: evaluationData,
-      }, mutationOptions);
-    }
-  };
-
-  const atividadesAvaliadas = atividades.filter((a) => a.avaliacao).length;
+  const atividadesAvaliadas = useMemo(() => atividades.filter((a) => a.avaliacao).length, [atividades]);
   const totalAtividades = atividades.length;
   const progresso = totalAtividades > 0 ? (atividadesAvaliadas / totalAtividades) * 100 : 0;
 
-  const isLoading = loadingItinerary || (activityIds.length > 0 && isLoadingEvaluations);
-
-  if (isLoading) {
+  if (isInitialLoad) {
     return (
       <div className="min-h-screen p-6 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -155,9 +92,10 @@ const AvaliarItinerario = () => {
     );
   }
 
-  // Helper para formatar data/hora do backend (LocalDateTime)
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return { date: "-", time: "-" };
+
     return {
       date: date.toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit' }),
       time: date.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
@@ -171,13 +109,13 @@ const AvaliarItinerario = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(-1)} // Voltar para a página anterior
+          onClick={() => navigate("/itinerarios")}
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Avaliar Itinerário</h1>
-          <p className="text-muted-foreground">{itinerario?.roadmap?.titulo || "Itinerário"}</p>
+          <p className="text-muted-foreground">{itinerario?.roadmap?.title || "Itinerário"}</p>
         </div>
       </div>
 
@@ -202,13 +140,12 @@ const AvaliarItinerario = () => {
         <h2 className="text-xl font-semibold">Atividades</h2>
         {atividades.map((atividade) => {
           const { date, time } = formatDateTime(atividade.time);
+
           return (
             <Card
               key={atividade.id}
-              className={`p-4 cursor-pointer transition-smooth hover:shadow-medium ${
-                selectedAtividade === atividade.id ? "ring-2 ring-primary" : ""
-              }`}
-              onClick={() => handleSelectAtividade(atividade.id)}
+              className={`p-4 cursor-pointer transition-smooth hover:shadow-medium`}
+              onClick={() => handleOpenDialog(atividade)}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -220,8 +157,8 @@ const AvaliarItinerario = () => {
                       {time}
                     </span>
                   </div>
-                  <h3 className="font-semibold">{atividade.nome}</h3>
-                  <p className="text-sm text-muted-foreground">{atividade.local}</p>
+                  <h3 className="font-semibold">{atividade.name}</h3>
+                  <p className="text-sm text-muted-foreground">{atividade.location}</p>
                   {atividade.avaliacao && (
                     <div className="flex items-center gap-1 mt-2">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -234,83 +171,43 @@ const AvaliarItinerario = () => {
                           }`}
                         />
                       ))}
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({atividade.avaliacao.rating})
+                      </span>
                     </div>
                   )}
                 </div>
-                {atividade.avaliacao && (
-                  <CheckCircle className="w-5 h-5 text-secondary flex-shrink-0" />
-                )}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {atividade.avaliacao && (
+                        <CheckCircle className="w-5 h-5 text-secondary" />
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-8 h-8"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDialog(atividade);
+                        }}
+                    >
+                        <Edit className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                </div>
               </div>
             </Card>
           );
         })}
       </div>
 
-      {/* Formulário de Avaliação (Fixo no mobile) */}
-      {selectedAtividade && (
-        <Card className="p-6 space-y-4 sticky bottom-4 left-0 right-0 rounded-xl shadow-strong sm:static sm:shadow-soft sm:bottom-auto">
-          <h3 className="font-semibold">
-            Avaliar: {atividades.find(a => a.id === selectedAtividade)?.nome}
-          </h3>
-
-          <div>
-            <label className="text-sm font-medium mb-2 block">Nota</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setNota(star)}
-                  className="focus:outline-none"
-                  disabled={saving}
-                >
-                  <Star
-                    className={`w-8 h-8 transition-smooth ${
-                      star <= nota
-                        ? "fill-accent text-accent"
-                        : "text-muted-foreground hover:text-accent"
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              Comentário (opcional)
-            </label>
-            <Textarea
-              value={comentario}
-              onChange={(e) => setComentario(e.target.value)}
-              placeholder="Compartilhe sua experiência..."
-              rows={3}
-              disabled={saving}
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedAtividade(null);
-                setNota(0);
-                setComentario("");
-              }}
-              className="flex-1"
-              disabled={saving}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSaveAvaliacao}
-              disabled={saving || nota === 0}
-              className="flex-1"
-            >
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {saving ? "Salvando..." : "Salvar Avaliação"}
-            </Button>
-          </div>
-        </Card>
+      {/* Modal de Avaliação */}
+      {selectedActivityForDialog && (
+        <EvaluationDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          itineraryActivityId={selectedActivityForDialog.id}
+          activityName={selectedActivityForDialog.name}
+          initialEvaluation={selectedActivityForDialog.avaliacao || null}
+        />
       )}
     </div>
   );

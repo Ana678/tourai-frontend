@@ -63,62 +63,6 @@ const Home = () => {
           })}
         </div>
       </div>
-
-      {/* Recent Itineraries */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Últimos Itinerários</h2>
-          <Link to="/itinerarios">
-            <Button variant="ghost" size="sm">Ver todos</Button>
-          </Link>
-        </div>
-        <div className="space-y-3">
-          {recentItineraries.map((itinerary) => (
-            <Card key={itinerary.id} className="p-4 hover:shadow-medium transition-smooth">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Map className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{itinerary.title}</h3>
-                    <p className="text-sm text-muted-foreground">{itinerary.days} dias</p>
-                  </div>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  itinerary.status === "Concluído"
-                    ? "bg-secondary/20 text-secondary"
-                    : "bg-accent/20 text-accent"
-                }`}>
-                  {itinerary.status}
-                </span>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Recommendations */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Recomendações</h2>
-        <Card className="p-6 text-center space-y-3 border-dashed">
-          <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
-            <Map className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <div>
-            <h3 className="font-semibold mb-1">Explore novos destinos</h3>
-            <p className="text-sm text-muted-foreground">
-              Crie seu primeiro roteiro e comece a planejar
-            </p>
-          </div>
-          <Link to="/roteiros/novo">
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Criar Roteiro
-            </Button>
-          </Link>
-        </Card>
-      </div>
     </div>
   );
 };
