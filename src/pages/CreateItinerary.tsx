@@ -160,6 +160,31 @@ const CreateItinerary = () => {
       return;
     }
 
+    if (new Date(startDate).getTime() > new Date(endDate).getTime()) {
+      toast({
+        title: "A data de fim não pode ser anterior à data de início!",
+        variant: "destructive",
+      });
+
+      return;
+    }
+
+    if (
+      activitiesTimes.some((item, i) =>
+        activitiesTimes.some(
+          (other, j) =>
+            i !== j && item.day === other.day && item.time === other.time
+        )
+      )
+    ) {
+      toast({
+        title: "Não podem haver duas atividades no mesmo dia e horário!",
+        variant: "destructive",
+      });
+
+      return;
+    }
+
     const mappedActivities = roadmap.activities.map((item, index) => {
       const { day = 1, time } = activitiesTimes[index];
 
@@ -172,6 +197,19 @@ const CreateItinerary = () => {
 
       return { activityId: item.id, time: date.toISOString() };
     });
+
+    if (
+      mappedActivities.some(
+        (item) => new Date(item.time).getTime() < new Date().getTime()
+      )
+    ) {
+      toast({
+        title: "Não é permitido preencher o itinerário com datas do passado!",
+        variant: "destructive",
+      });
+
+      return;
+    }
 
     setSaving(true);
 
@@ -248,7 +286,7 @@ const CreateItinerary = () => {
       </Card>
 
       <div className="space-y-3">
-        <h2 className="font-semibold">activities - Arraste para reordenar</h2>
+        <h2 className="font-semibold">Atividades</h2>
         {roadmap.activities.map((activity, index) => (
           <Activity
             key={activity.id}
