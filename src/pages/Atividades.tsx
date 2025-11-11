@@ -20,8 +20,6 @@ const Atividades = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.id;
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Buscar atividades
   const {
@@ -40,31 +38,7 @@ const Atividades = () => {
     enabled: !!userId,
   });
 
-  // Mutação para deletar atividade
-  const deleteAtividadeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/activities/${id}`, {
-        params: { userId }
-      });
-    },
-    onSuccess: () => {
-      toast({ title: "Atividade excluída com sucesso!" });
-      queryClient.invalidateQueries({ queryKey: ["atividades", userId] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao excluir atividade",
-        description: error.response?.data?.message || "Erro inesperado",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const handleDelete = (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir esta atividade?")) {
-      deleteAtividadeMutation.mutate(id);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -124,7 +98,7 @@ const Atividades = () => {
                   )}
                 </div>
               </div>
-              
+
               {/* Tags */}
               {atividade.tags && atividade.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -140,34 +114,6 @@ const Atividades = () => {
                   )}
                 </div>
               )}
-              
-              <div className="flex items-center gap-2 pt-2 border-t border-border">
-                {/* Botão Editar */}
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="flex-1 gap-2"
-                  onClick={() => navigate(`/atividades/${atividade.id}/editar`)}
-                >
-                  <Edit className="w-4 h-4" />
-                  Editar
-                </Button>
-
-                {/* Botão Deletar */}
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => handleDelete(atividade.id)}
-                  disabled={deleteAtividadeMutation.isPending && deleteAtividadeMutation.variables === atividade.id}
-                  title="Excluir atividade"
-                >
-                  {deleteAtividadeMutation.isPending && deleteAtividadeMutation.variables === atividade.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  )}
-                </Button>
-              </div>
             </div>
           </Card>
         ))}

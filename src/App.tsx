@@ -23,7 +23,6 @@ import NovoRoteiro from "./pages/NovoRoteiro";
 import EditarRoteiro from "./pages/EditarRoteiro";
 import Atividades from "./pages/Atividades";
 import NovaAtividade from "./pages/NovaAtividade";
-import EditarAtividade from "./pages/EditarAtividade";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -169,16 +168,6 @@ const App = () => (
               <ProtectedRoute>
                 <MobileLayout>
                   <NovaAtividade />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/atividades/:id/editar"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <EditarAtividade />
                 </MobileLayout>
               </ProtectedRoute>
             }
