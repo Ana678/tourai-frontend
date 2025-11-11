@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Clock, Check, Play } from "lucide-react";
+import { Calendar, Clock, Check, Play, Star } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -157,6 +157,23 @@ const Itineraries = () => {
                   {getStartDate(itinerary)?.toLocaleDateString("pt-BR") ?? "-"}
                 </span>
               </div>
+              {getStatus(itinerary) === "concluded" && (
+                <div
+                  className="p-0 pt-0 border-t border-border/0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button
+                    asChild
+                    variant="secondary"
+                    className="w-full gap-2 mt-2"
+                  >
+                    <Link to={`/avaliar-itinerario/${itinerary.id}`}>
+                      <Star className="w-4 h-4 fill-secondary-foreground" />
+                      Avaliar Itinerário
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
         ))}

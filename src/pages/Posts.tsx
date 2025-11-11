@@ -2,8 +2,8 @@ import { Plus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useGetPosts } from "@/services/api/postsService";
-import { PostCard } from "@/components/layout/PostCard"; 
-import { CreatePostDialog } from "@/components/layout/CreatePostDialog"; 
+import { PostCard } from "@/components/layout/PostCard";
+import { CreatePostDialog } from "@/components/layout/CreatePostDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 const Posts = () => {
@@ -13,14 +13,14 @@ const Posts = () => {
   console.log("Current User in Posts:", user);
 
   const {
-    data, 
-    isLoading, 
+    data,
+    isLoading,
     isError,
     error,
-    fetchNextPage, 
+    fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useGetPosts(); 
+  } = useGetPosts();
 
   if (isLoading) {
     return <div className="min-h-screen p-6">Carregando...</div>;
@@ -55,21 +55,21 @@ const Posts = () => {
         </div>
       </div>
 
-      <div className="p-4 sm:px-6 max-w-5xl mx-auto space-y-6">
-        {posts.length === 0 && !isLoading ? ( 
+      <div className="p-4 sm:px-6 mx-auto space-y-6">
+        {posts.length === 0 && !isLoading ? (
           <Card className="p-8 text-center">
             <p className="text-muted-foreground">Nenhuma publicação ainda</p>
           </Card>
         ) : (
           posts.map((post) => (
-            <PostCard 
-              key={post.id} 
-              post={post} 
-              currentUserId={user?.id} 
+            <PostCard
+              key={post.id}
+              post={post}
+              currentUserId={user?.id}
             />
           ))
         )}
-        
+
         <div className="flex justify-center py-4">
           {hasNextPage && (
             <Button

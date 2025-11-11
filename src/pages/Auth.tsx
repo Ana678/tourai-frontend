@@ -4,45 +4,60 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea"; // Importar Textarea
 import { useToast } from "@/hooks/use-toast";
-import { Plane } from "lucide-react";
+import { Plane, X } from "lucide-react"; // Importar X
 
 import { useLoginUser, useRegisterUser } from "@/services/api/authService";
+import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
+
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [bio, setBio] = useState("");
+  const [interesses, setInteresses] = useState<string[]>([]);
+  const [interesseInput, setInteresseInput] = useState("");
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const { updateUserInStorage } = useAuth();
   const registerMutation = useRegisterUser();
   const loginMutation = useLoginUser();
 
   const isLoading = registerMutation.isPending || loginMutation.isPending;
+
+  // Funções helper do Auth02.tsx
+  const addInteresse = () => {
+    if (interesseInput.trim() && !interesses.includes(interesseInput.trim())) {
+      setInteresses([...interesses, interesseInput.trim()]);
+      setInteresseInput("");
+    }
+  };
+
+  const removeInteresse = (interesse: string) => {
+    setInteresses(interesses.filter((i) => i !== interesse));
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       if (isLogin) {
+        // --- LÓGICA DE LOGIN ---
         if (!email || !password) throw new Error("Preencha email e senha");
 
         loginMutation.mutate({ email, password }, {
           onSuccess: (userResponse) => {
-            const userObj = {
-              id: userResponse.id,
-              email: userResponse.email,
-              nome: userResponse.name
-            };
-            localStorage.setItem("user", JSON.stringify(userObj));
-
+            updateUserInStorage(userResponse);
             toast({ title: "Login realizado com sucesso!" });
             navigate("/");
           },
           onError: (error: any) => {
-
             const responseData = error?.response?.data;
             const errorMsg =
             (typeof responseData === "object" && (responseData.body || responseData.message)) ||
@@ -58,12 +73,20 @@ const Auth = () => {
         });
 
       } else {
-
-        registerMutation.mutate({ name: nome, email, password }, {
+        // --- LÓGICA DE REGISTRO ---
+        registerMutation.mutate({
+          name: nome,
+          email,
+          password,
+          // Envia os campos opcionais para o backend
+          // O backend (UserService.java) já espera por eles
+          profilePhotoUrl: avatarUrl || undefined,
+          bio: bio || undefined,
+          interests: interesses.length > 0 ? interesses : undefined
+        }, {
           onSuccess: (userResponse) => {
-            const userObj = { id: userResponse.id, email: userResponse.email, nome: userResponse.name };
-            localStorage.setItem("user", JSON.stringify(userObj));
-
+            // A userResponse também contém os dados completos no cadastro
+            updateUserInStorage(userResponse);
             toast({ title: "Conta criada com sucesso!" });
             navigate("/");
           },
@@ -105,7 +128,7 @@ const Auth = () => {
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <Plane className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">Roteiros de Viagem</h1>
+          <h1 className="text-2xl font-bold">TourAI</h1>
           <p className="text-muted-foreground">
             {isLogin ? "Faça login para continuar" : "Crie sua conta"}
           </p>
@@ -113,17 +136,80 @@ const Auth = () => {
 
         <form onSubmit={handleAuth} className="space-y-4">
           {!isLogin && (
-            <div className="space-y-2">
-              <Label htmlFor="nome">Nome</Label>
-              <Input
-                id="nome"
-                placeholder="Seu nome"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome</Label>
+                <Input
+                  id="nome"
+                  placeholder="Seu nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="avatarUrl">Foto de Perfil (URL) - Opcional</Label>
+                <Input
+                  id="avatarUrl"
+                  placeholder="https://exemplo.com/foto.jpg"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  type="url"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bio">Bio - Opcional</Label>
+                <Textarea
+                  id="bio"
+                  placeholder="Conte um pouco sobre você..."
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={3}
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="interesses">Interesses - Opcional</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="interesses"
+                    placeholder="Ex: Praia, Cultura, Aventura"
+                    value={interesseInput}
+                    onChange={(e) => setInteresseInput(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addInteresse())}
+                    disabled={isLoading}
+                  />
+                  <Button type="button" onClick={addInteresse} variant="outline" disabled={isLoading}>
+                    Adicionar
+                  </Button>
+                </div>
+                {interesses.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {interesses.map((interesse) => (
+                      <span
+                        key={interesse}
+                        className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full flex items-center gap-1"
+                      >
+                        {interesse}
+                        <button
+                          type="button"
+                          onClick={() => removeInteresse(interesse)}
+                          className="hover:text-destructive"
+                          disabled={isLoading}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           <div className="space-y-2">

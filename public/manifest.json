@@ -1,6 +1,6 @@
 {
-  "name": "Roteiros de Viagem",
-  "short_name": "Roteiros",
+  "name": "TourAI",
+  "short_name": "TourAI",
   "description": "Conecte-se com turistas e guias. Crie, edite e compartilhe roteiros incríveis de viagem.",
   "start_url": "/",
   "display": "standalone",

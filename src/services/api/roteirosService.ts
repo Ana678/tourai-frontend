@@ -81,7 +81,7 @@ export const createRoteiro = async (dto: CreateRoteiroDTO, userId: string | numb
       visibility: dto.visibility || "PUBLIC",
       status: "APPROVED",
       tags: dto.tags || [],
-      activities: [],
+      activities: []
     }, {
       params: { userId }
     });

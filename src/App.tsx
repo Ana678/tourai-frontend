@@ -7,11 +7,16 @@ import MobileLayout from "./components/layout/MobileLayout";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import { useAuth } from "./hooks/useAuth";
+
+import { AuthProvider, useAuth } from "./hooks/useAuth";
 import Posts from "./pages/Posts";
 import Itineraries from "./pages/Itineraries";
 import Itinerary from "./pages/Itinerary";
 import CreateItinerary from "./pages/CreateItinerary";
+import AvaliarItinerario from "./pages/AvaliarItinerario";
+
+import Profile from "./pages/Profile";
+
 import { queryClient } from "./services/api/api";
 import Roteiros from "./pages/Roteiros";
 import NovoRoteiro from "./pages/NovoRoteiro";
@@ -30,7 +35,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
 
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
 
   return <>{children}</>;
 };
@@ -41,52 +48,82 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
+        <AuthProvider>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <Home />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/postagens"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <Posts />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/avaliar-itinerario/:id"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <AvaliarItinerario />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/perfil"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <Profile />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+                path="/itinerarios"
+                element={
+                <ProtectedRoute>
+                    <MobileLayout>
+                    <Itineraries />
+                    </MobileLayout>
+                </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/itinerarios/:id"
+                element={
+                <ProtectedRoute>
+                    <MobileLayout>
+                    <Itinerary />
+                    </MobileLayout>
+                </ProtectedRoute>
+                }
+            />
 
-          <Route
-            path="/"
+        <Route
+            path="/roteiros/:id/criar-itinerario"
             element={
-              <ProtectedRoute>
+            <ProtectedRoute>
                 <MobileLayout>
-                  <Home />
+                <CreateItinerary />
                 </MobileLayout>
-              </ProtectedRoute>
+            </ProtectedRoute>
             }
-          />
+        />
 
-          <Route
-            path="/postagens"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <Posts />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/itinerarios"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <Itineraries />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/itinerarios/:id"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <Itinerary />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
+        <Route
             path="/roteiros"
             element={
               <ProtectedRoute>
@@ -116,17 +153,6 @@ const App = () => (
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/roteiros/:id/criar-itinerario"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <CreateItinerary />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-
           <Route
             path="/atividades"
             element={
@@ -158,18 +184,9 @@ const App = () => (
             }
           />
 
-          <Route
-            path="/itinerarios/:id"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <Itinerary />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
