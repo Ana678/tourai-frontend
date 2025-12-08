@@ -39,6 +39,13 @@ export interface ItineraryDTO {
   }[];
 }
 
+export interface ItineraryPaginationDTO {
+  content: ItineraryDTO[];
+  first: boolean;
+  last: boolean;
+  totalPages: number;
+}
+
 export const createItinerary = (data: CreateItineraryDTO) => {
   return api
     .post<ItineraryDTO>("/itineraries", data)
@@ -61,9 +68,15 @@ export const deleteItinerary = async (id: number) => {
   await api.delete(`/itineraries/${id}`);
 };
 
-export const getItineraries = (params: { userId: number }) => {
+export const getItineraries = (params: {
+  userId: number;
+  type?: "OWNED" | "PARTICIPATING";
+  search?: string;
+  page?: number;
+  size?: number;
+}) => {
   return api
-    .get<ItineraryDTO[]>("/itineraries", { params })
+    .get<ItineraryPaginationDTO>("/itineraries", { params })
     .then((response) => response.data);
 };
 
@@ -117,10 +130,16 @@ export const useDeleteItinerary = () => {
   });
 };
 
-export const useGetItineraries = (params: { userId?: number }) => {
+export const useGetItineraries = (params: {
+  userId?: number;
+  type?: "OWNED" | "PARTICIPATING";
+  search?: string;
+  page?: number;
+  size?: number;
+}) => {
   return useQuery({
     queryKey: ["itineraries", params],
-    queryFn: () => getItineraries({ userId: params.userId! }),
+    queryFn: () => getItineraries({ ...params, userId: params.userId! }),
     enabled: !!params.userId,
   });
 };
