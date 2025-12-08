@@ -87,7 +87,7 @@ const NovoRoteiro = () => {
   // Buscar atividades (TanStack Query)
   const {
     data: atividades = [],
-    isLoading: loadingAtividades,
+    isPending: loadingAtividades,
     isError,
   } = useQuery<Atividade[]>({
     queryKey: ["atividades", userId],
@@ -115,7 +115,7 @@ const NovoRoteiro = () => {
     },
   });
 
-  const loading = createRoteiroMutation.isLoading;
+  const loading = createRoteiroMutation.isPending;
 
   // Alternar seleção de tags do roteiro
   const toggleTag = (tag: string) => {
