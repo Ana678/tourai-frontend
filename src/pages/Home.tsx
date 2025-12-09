@@ -32,7 +32,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 space-y-6">
-      {/* Hero Section */}
       <div className="gradient-hero rounded-2xl p-6 sm:p-8 text-primary-foreground">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">
           Bem-vindo de volta!
@@ -41,8 +40,6 @@ const Home = () => {
           Planeje sua próxima aventura
         </p>
       </div>
-
-      {/* Quick Actions */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Atalhos Rápidos</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
