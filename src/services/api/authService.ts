@@ -9,6 +9,7 @@ export interface UserRegisterRequest {
   bio?: string;
   interests?: string[];
 }
+
 export interface UserLoginRequest {
   email: string;
   password?: string;
@@ -23,13 +24,18 @@ export interface UserResponse {
   interests?: string[];
 }
 
+export interface AuthResponse {
+  token: string;
+  user: UserResponse;
+}
+
 const registerUser = async (data: UserRegisterRequest): Promise<UserResponse> => {
   const response = await api.post<UserResponse>('/users', data);
   return response.data;
 };
 
-const loginUser = async (data: UserLoginRequest): Promise<UserResponse> => {
-  const response = await api.post<UserResponse>('/users/auth/login', data);
+const loginUser = async (data: UserLoginRequest): Promise<AuthResponse> => {
+  const response = await api.post<AuthResponse>('/users/auth/login', data);
   return response.data;
 };
 
@@ -45,7 +51,7 @@ export const useRegisterUser = () => {
 };
 
 export const useLoginUser = () => {
-  return useMutation<UserResponse, Error, UserLoginRequest>({
+  return useMutation<AuthResponse, Error, UserLoginRequest>({
     mutationFn: loginUser,
   });
 };
