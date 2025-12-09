@@ -25,7 +25,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { updateUserInStorage } = useAuth();
+  const { signIn, updateUserInStorage } = useAuth();
   const registerMutation = useRegisterUser();
   const loginMutation = useLoginUser();
 
@@ -48,58 +48,48 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        // --- LÓGICA DE LOGIN ---
         if (!email || !password) throw new Error("Preencha email e senha");
 
         loginMutation.mutate({ email, password }, {
-          onSuccess: (userResponse) => {
-            updateUserInStorage(userResponse);
+          onSuccess: (data) => {
+            signIn(data.token, data.user);
             toast({ title: "Login realizado com sucesso!" });
-            navigate("/");
           },
           onError: (error: any) => {
             const responseData = error?.response?.data;
-            const errorMsg =
-            (typeof responseData === "object" && (responseData.body || responseData.message)) ||
-            (typeof responseData === "string" && responseData) ||
-            error?.message ||
-            String(error);
+            //const errorMsg = typeof responseData === "object" ? responseData.message || JSON.stringify(responseData) : String(error);
             toast({
                 title: "Erro no Login",
-                description: String(errorMsg || "Não foi possível realizar o login."),
+                description: "Credenciais inválidas.",
                 variant: "destructive",
             });
           }
         });
 
       } else {
-        // --- LÓGICA DE REGISTRO ---
         registerMutation.mutate({
           name: nome,
           email,
           password,
-          // Envia os campos opcionais para o backend
-          // O backend (UserService.java) já espera por eles
           profilePhotoUrl: avatarUrl || undefined,
           bio: bio || undefined,
           interests: interesses.length > 0 ? interesses : undefined
         }, {
-          onSuccess: (userResponse) => {
-            // A userResponse também contém os dados completos no cadastro
-            updateUserInStorage(userResponse);
-            toast({ title: "Conta criada com sucesso!" });
-            navigate("/");
+          onSuccess: () => {
+            toast({ title: "Conta criada com sucesso! Faça login." });
+            setIsLogin(true);
+            setPassword("");
           },
           onError: (error: any) => {
             const responseData = error?.response?.data;
-            const errorMsg =
-            (typeof responseData === "object" && (responseData.body || responseData.message)) ||
-            (typeof responseData === "string" && responseData) ||
-            error?.message ||
-            String(error);
+            // const errorMsg =
+            // (typeof responseData === "object" && (responseData.body || responseData.message)) ||
+            // (typeof responseData === "string" && responseData) ||
+            // error?.message ||
+            // String(error);
             toast({
                 title: "Erro no Cadastro",
-                description: String(errorMsg || "Não foi possível criar a conta."),
+                description: "Não foi possível criar a conta. Verifique os dados.",
                 variant: "destructive",
             });
           }

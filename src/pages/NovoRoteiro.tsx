@@ -19,7 +19,7 @@ import {
 } from "@/services/api/roteirosService";
 
 // Tags do ROTEIRO (categorias gerais)
-const TAGS_ROTEIRO = [
+export const TAGS_ROTEIRO = [
   "Praia",
   "Montanha",
   "Cidade",
@@ -121,7 +121,7 @@ const NovoRoteiro = () => {
     },
   });
 
-  const loading = createRoteiroMutation.isPending; // Atualizado de isLoading (v5) para isPending
+  const loading = createRoteiroMutation.isPending;
 
   // Alternar seleção de tags do roteiro
   const toggleTag = (tag: string) => {

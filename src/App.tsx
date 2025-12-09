@@ -23,6 +23,8 @@ import NovoRoteiro from "./pages/NovoRoteiro";
 import EditarRoteiro from "./pages/EditarRoteiro";
 import Atividades from "./pages/Atividades";
 import NovaAtividade from "./pages/NovaAtividade";
+import BuscarUsuarios from "./pages/BuscarUsuarios";
+import Notificacoes from "./pages/Notifications";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -66,6 +68,16 @@ const App = () => (
                 <ProtectedRoute>
                   <MobileLayout>
                     <Posts />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notificacoes"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <Notificacoes />
                   </MobileLayout>
                 </ProtectedRoute>
               }
@@ -172,6 +184,17 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+
+          <Route
+              path="/buscar-usuarios"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <BuscarUsuarios />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+           />
 
           <Route path="*" element={<NotFound />} />
           </Routes>
