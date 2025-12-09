@@ -58,7 +58,7 @@ export interface CreateCommentInput {
 export const postKeys = {
   all: ['posts'] as const,
   lists: () => [...postKeys.all, 'list'] as const, 
-  listFiltered: (search?: string) => [...postKeys.lists(), { search }] as const,
+  listFiltered: (userId: number, search?: string) => [...postKeys.lists(), { userId, search }] as const,
   details: () => [...postKeys.all, 'detail'] as const,
   detail: (id: number) => [...postKeys.details(), id] as const,
   liked: (postId: number, userId: number) => [...postKeys.all, 'liked', postId, userId] as const,
@@ -69,7 +69,6 @@ export const commentKeys = {
   lists: () => [...commentKeys.all, 'list'] as const,
   list: (postId: number) => [...commentKeys.lists(), postId] as const,
 };
-
 
 export const getHasUserLiked = async (postId: number, userId: number): Promise<boolean> => {
     const response = await api.get<boolean>(`/posts/${postId}/liked`, {
@@ -200,17 +199,17 @@ export const useCreateComment = () => {
   });
 };
 
-
-export const getNewerPosts = async (quantity: number, search?: string): Promise<PostResponse[]> => {
+export const getNewerPosts = async (userId: number, quantity: number, search?: string): Promise<PostResponse[]> => {
     const response = await api.get<PostResponse[]>('/posts/new', {
-        params: { quantity, search }
+        params: { userId, quantity, search } 
     });
     return response.data;
 }
 
-export const getOlderPosts = async (lastPostDate: string, quantity: number, search?: string): Promise<PostResponse[]> => {
+export const getOlderPosts = async (userId: number, lastPostDate: string, quantity: number, search?: string): Promise<PostResponse[]> => {
     const response = await api.get<PostResponse[]>('/posts/older', {
         params: { 
+          userId, 
           lastPostDate,
           quantity,
           search
@@ -219,18 +218,21 @@ export const getOlderPosts = async (lastPostDate: string, quantity: number, sear
     return response.data;
 }
 
-const fetchPosts = async ({ pageParam, quantity, search }: { pageParam?: string, quantity: number, search?: string }) => {
+const fetchPosts = async ({ pageParam, userId, quantity, search }: { pageParam?: string, userId: number, quantity: number, search?: string }) => {
   if (pageParam) {
-    return getOlderPosts(pageParam, quantity, search);
+    return getOlderPosts(userId, pageParam, quantity, search);
   } else {
-    return getNewerPosts(quantity, search);
+    return getNewerPosts(userId, quantity, search);
   }
 };
 
-export const useGetPosts = (quantity: number = 5, search?: string) => {
+export const useGetPosts = (userId: number | undefined, quantity: number = 5, search?: string) => {
     return useInfiniteQuery({
-        queryKey: postKeys.listFiltered(search),
-        queryFn: ({ pageParam }) => fetchPosts({ pageParam, quantity, search }),
+        queryKey: postKeys.listFiltered(userId || 0, search),
+        queryFn: ({ pageParam }) => {
+            if (!userId) return Promise.resolve([]); // Não busca se não houver usuário
+            return fetchPosts({ pageParam, userId, quantity, search });
+        },
         initialPageParam: undefined,
         getNextPageParam: (lastPage: PostResponse[]) => {
             if (!lastPage || lastPage.length === 0) {
@@ -239,6 +241,7 @@ export const useGetPosts = (quantity: number = 5, search?: string) => {
             const lastPost = lastPage[lastPage.length - 1];
             return lastPost?.postDate; 
         },
+        enabled: !!userId, 
     });
 }
 
