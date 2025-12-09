@@ -8,7 +8,6 @@ import {
 
 import { api } from './api';
 
-
 export interface User {
     id: number;
     name: string;
@@ -59,6 +58,7 @@ export interface CreateCommentInput {
 export const postKeys = {
   all: ['posts'] as const,
   lists: () => [...postKeys.all, 'list'] as const, 
+  listFiltered: (search?: string) => [...postKeys.lists(), { search }] as const,
   details: () => [...postKeys.all, 'detail'] as const,
   detail: (id: number) => [...postKeys.details(), id] as const,
   liked: (postId: number, userId: number) => [...postKeys.all, 'liked', postId, userId] as const,
@@ -78,7 +78,6 @@ export const getHasUserLiked = async (postId: number, userId: number): Promise<b
     return response.data;
 }
 
-
 export const addLike = async ({ postId, userId }: LikeInput): Promise<void> => {
     await api.post(`/posts/${postId}/likes`, null, { params: { userId } });
 }
@@ -86,7 +85,6 @@ export const addLike = async ({ postId, userId }: LikeInput): Promise<void> => {
 export const removeLike = async ({ postId, userId }: LikeInput): Promise<void> => {
     await api.delete(`/posts/${postId}/likes`, { params: { userId } });
 }
-
 
 export const getNewerComments = async (postId: number, quantity: number): Promise<CommentResponse[]> => {
     const response = await api.get<CommentResponse[]>(`/comments/${postId}/new`, {
@@ -110,7 +108,6 @@ const fetchComments = async ({ pageParam, postId, quantity }: { pageParam?: stri
   }
 };
 
-
 export const createComment = async ({ postId, userId, content }: CreateCommentInput): Promise<CommentResponse> => {
     const response = await api.post<CommentResponse>(`/comments/${postId}`, content, {
         params: { userId },
@@ -119,13 +116,12 @@ export const createComment = async ({ postId, userId, content }: CreateCommentIn
     return response.data;
 }
 
-
 export const useHasUserLiked = (postId: number, userId: number) => {
     return useQuery<boolean, Error>({
         queryKey: postKeys.liked(postId, userId),
         queryFn: () => getHasUserLiked(postId, userId),
         enabled: !!postId && !!userId,
-        staleTime: 1000 * 60 * 5, // 5 minutos
+        staleTime: 1000 * 60 * 5,
     });
 }
 
@@ -153,15 +149,11 @@ export const useRemoveLike = () => {
     });
 }
 
-
 export const useGetComments = (postId: number, quantity: number = 3) => {
     return useInfiniteQuery({
         queryKey: commentKeys.list(postId),
-
         queryFn: ({ pageParam }) => fetchComments({ pageParam, postId, quantity }),
-        
         initialPageParam: undefined,
-        
         getNextPageParam: (lastPage: CommentResponse[]) => {
             if (!lastPage || lastPage.length === 0) {
               return undefined;
@@ -173,7 +165,6 @@ export const useGetComments = (postId: number, quantity: number = 3) => {
     });
 }
 
-
 export const useCreateComment = () => {
   const queryClient = useQueryClient();
   return useMutation<CommentResponse, Error, CreateCommentInput>({
@@ -182,13 +173,12 @@ export const useCreateComment = () => {
       const { postId } = variables;
       queryClient.invalidateQueries({ queryKey: commentKeys.list(postId) });
 
-      queryClient.setQueryData<InfiniteData<PostResponse[]>>(
-        postKeys.lists(), 
+      queryClient.setQueriesData<InfiniteData<PostResponse[]>>(
+        { queryKey: postKeys.lists() }, 
         (oldData) => {
           if (!oldData) {
             return undefined;
           }
-
           const newPages = oldData.pages.map((page) => {
             return page.map((post) => {
               if (post.id === postId) {
@@ -210,44 +200,42 @@ export const useCreateComment = () => {
   });
 };
 
-export const getNewerPosts = async (quantity: number): Promise<PostResponse[]> => {
+
+export const getNewerPosts = async (quantity: number, search?: string): Promise<PostResponse[]> => {
     const response = await api.get<PostResponse[]>('/posts/new', {
-        params: { quantity }
+        params: { quantity, search }
     });
     return response.data;
 }
 
-export const getOlderPosts = async (lastPostDate: string, quantity: number): Promise<PostResponse[]> => {
+export const getOlderPosts = async (lastPostDate: string, quantity: number, search?: string): Promise<PostResponse[]> => {
     const response = await api.get<PostResponse[]>('/posts/older', {
         params: { 
           lastPostDate,
-          quantity 
+          quantity,
+          search
         }
     });
     return response.data;
 }
 
-const fetchPosts = async ({ pageParam, quantity }: { pageParam?: string, quantity: number }) => {
+const fetchPosts = async ({ pageParam, quantity, search }: { pageParam?: string, quantity: number, search?: string }) => {
   if (pageParam) {
-    return getOlderPosts(pageParam, quantity);
+    return getOlderPosts(pageParam, quantity, search);
   } else {
-    return getNewerPosts(quantity);
+    return getNewerPosts(quantity, search);
   }
 };
 
-
-export const useGetPosts = (quantity: number = 3) => {
+export const useGetPosts = (quantity: number = 5, search?: string) => {
     return useInfiniteQuery({
-        queryKey: postKeys.lists(),
-
-        queryFn: ({ pageParam }) => fetchPosts({ pageParam, quantity }),
+        queryKey: postKeys.listFiltered(search),
+        queryFn: ({ pageParam }) => fetchPosts({ pageParam, quantity, search }),
         initialPageParam: undefined,
-
         getNextPageParam: (lastPage: PostResponse[]) => {
             if (!lastPage || lastPage.length === 0) {
               return undefined; 
             }
-            
             const lastPost = lastPage[lastPage.length - 1];
             return lastPost?.postDate; 
         },
@@ -274,10 +262,8 @@ export const createPost = async (data: CreatePost): Promise<PostResponse> => {
     return response.data;
 }
 
-
 export const useCreatePost = () => {
     const queryClient = useQueryClient();
-
     return useMutation<PostResponse, Error, CreatePost>({
         mutationFn: createPost,
         onSuccess: () => {
