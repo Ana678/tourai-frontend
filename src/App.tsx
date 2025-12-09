@@ -16,6 +16,7 @@ import CreateItinerary from "./pages/CreateItinerary";
 import AvaliarItinerario from "./pages/AvaliarItinerario";
 
 import Profile from "./pages/Profile";
+import ProfilePublic from "./pages/ProfilePublic"
 
 import { queryClient } from "./services/api/api";
 import Roteiros from "./pages/Roteiros";
@@ -72,6 +73,13 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/usuarios/:id" element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <ProfilePublic />
+                </MobileLayout>
+              </ProtectedRoute>
+            } />
             <Route
               path="/notificacoes"
               element={

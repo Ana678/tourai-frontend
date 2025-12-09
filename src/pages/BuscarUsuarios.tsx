@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, User as UserIcon, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -7,8 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { searchUsers } from "@/services/api/userService";
+// Importe a função de busca do serviço correto (ajuste o caminho se necessário)
+import { api } from "@/services/api/api"; 
+// import { searchUsers } from "@/services/api/userService"; // Se tiver esse serviço criado
 import { useDebounce } from "@/hooks/useDebounce";
+
+// Tipagem para o usuário retornado na busca
+type Profile = {
+  id: number;
+  name: string;
+  profilePhotoUrl?: string;
+  bio?: string;
+  interests?: string[];
+};
 
 const BuscarUsuarios = () => {
   const navigate = useNavigate();
@@ -23,8 +34,15 @@ const BuscarUsuarios = () => {
     isFetching
   } = useQuery({
     queryKey: ["users", "search", debouncedSearch],
-    queryFn: () => searchUsers(debouncedSearch),
+    queryFn: async () => {
+        // Chamada direta à API Java se não tiver o serviço searchUsers exportado
+        const response = await api.get<Profile[]>("/users/search", {
+            params: { query: debouncedSearch }
+        });
+        return response.data;
+    },
     enabled: debouncedSearch.length >= 2,
+    // Filtra o próprio usuário para não aparecer na busca
     select: (data) => data.filter((u) => u.id !== user?.id),
   });
 
@@ -75,12 +93,15 @@ const BuscarUsuarios = () => {
             <Card
               key={profile.id}
               className="p-4 cursor-pointer hover:shadow-medium transition-smooth"
-              onClick={() => navigate(`/perfil?uid=${profile.id}`)} // nagivate para o perfil do usuário
+              // CORREÇÃO AQUI: Navegar para a rota dinâmica /usuarios/:id
+              onClick={() => navigate(`/usuarios/${profile.id}`)}
             >
               <div className="flex items-start gap-4">
                 <Avatar className="w-12 h-12 border border-border">
                   <AvatarImage src={profile.profilePhotoUrl || undefined} />
-                  <AvatarFallback>{profile.name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {profile.name?.[0]?.toUpperCase() || "?"}
+                  </AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1 min-w-0">
