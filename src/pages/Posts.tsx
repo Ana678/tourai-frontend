@@ -20,7 +20,7 @@ const Posts = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useGetPosts(5, searchTerm);
+  } = useGetPosts(user?.id, 5, searchTerm);
 
   const posts = data?.pages.flatMap((page) => page) ?? [];
 
