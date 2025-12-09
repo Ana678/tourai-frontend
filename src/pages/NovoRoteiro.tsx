@@ -15,6 +15,7 @@ import {
   createRoteiro,
   Atividade,
   CreateRoteiroDTO,
+  Page,
 } from "@/services/api/roteirosService";
 
 // Tags do ROTEIRO (categorias gerais)
@@ -85,15 +86,20 @@ const NovoRoteiro = () => {
   const [tagsAtividadesFiltro, setTagsAtividadesFiltro] = useState<Set<string>>(new Set());
 
   // Buscar atividades (TanStack Query)
+  // Ajuste: Tipagem correta para Page<Atividade> e extração do content
   const {
-    data: atividades = [],
+    data: atividadesPage,
     isLoading: loadingAtividades,
     isError,
-  } = useQuery<Atividade[]>({
+  } = useQuery<Page<Atividade>>({
     queryKey: ["atividades", userId],
-    queryFn: () => fetchAtividades(userId!),
+    // Solicita 50 atividades para exibir uma lista maior na criação
+    queryFn: () => fetchAtividades(userId!, 0, 50),
     enabled: !!userId,
   });
+
+  // Extrai o array de atividades do objeto de página
+  const atividades = atividadesPage?.content || [];
 
   // Criar roteiro (mutação)
   const createRoteiroMutation = useMutation({
@@ -115,7 +121,7 @@ const NovoRoteiro = () => {
     },
   });
 
-  const loading = createRoteiroMutation.isLoading;
+  const loading = createRoteiroMutation.isPending; // Atualizado de isLoading (v5) para isPending
 
   // Alternar seleção de tags do roteiro
   const toggleTag = (tag: string) => {
@@ -327,7 +333,7 @@ const NovoRoteiro = () => {
             </p>
           ) : atividades.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              Nenhuma atividade disponível
+              Nenhuma atividade disponível. Crie uma atividade primeiro!
             </p>
           ) : (
             <div className="space-y-3">

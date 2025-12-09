@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   deleteRoteiro,
   favoriteRoteiro,
@@ -20,7 +20,20 @@ import {
 } from "@/services/api/roteirosService";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api/api";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { PaginationControl } from "@/components/common/PaginationControl";
+
+// Tipagem para a resposta paginada do backend
+type PageResponse<T> = {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+};
 
 type RoteiroDetalhado = {
   id: string;
@@ -32,10 +45,9 @@ type RoteiroDetalhado = {
 };
 
 type OptimisticFavoriteContext = {
-  previousMine?: RoteiroDetalhado[];
-  previousFavorites?: RoteiroDetalhado[];
+  previousMine?: PageResponse<RoteiroDetalhado>;
+  previousFavorites?: PageResponse<RoteiroDetalhado>;
 };
-
 
 const Roteiros = () => {
   const navigate = useNavigate();
@@ -45,60 +57,95 @@ const Roteiros = () => {
   const queryClient = useQueryClient();
 
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [page, setPage] = useState(0); // Estado para a página atual (0-index)
+  const pageSize = 6; // Quantidade de itens por página
+
+  // Reseta a página ao trocar de filtro
+  useEffect(() => {
+    setPage(0);
+  }, [showOnlyFavorites]);
+
   const roteirosQueryKey = ["roteiros", userId];
 
+  // Query para Meus Roteiros (Paginada)
   const {
-    data: myRoteiros = [],
+    data: myRoteirosPage,
     isLoading: isLoadingMine,
     isError: isErrorMine,
-  } = useQuery<RoteiroDetalhado[]>({
-    queryKey: [roteirosQueryKey, "mine"],
+  } = useQuery<PageResponse<RoteiroDetalhado>>({
+    queryKey: [roteirosQueryKey, "mine", page], // Adicionado page na key
     queryFn: async () => {
-      if (!userId) return [];
+      if (!userId) return { content: [], totalPages: 0 } as any;
       const response = await api.get('/roadmaps/mine', {
-        params: { userId }
+        params: { 
+          userId, 
+          page: showOnlyFavorites ? 0 : page, // Só pagina se for a tab ativa
+          size: pageSize 
+        }
       });
       return response.data;
     },
-    enabled: !!userId,
+    enabled: !!userId && !showOnlyFavorites, // Só busca se estiver na aba "Meus Roteiros"
+    placeholderData: keepPreviousData, // Mantém dados antigos enquanto carrega novos
   });
 
-
+  // Query para Favoritos (Paginada)
   const {
-    data: favoriteRoteiros = [],
+    data: favoriteRoteirosPage,
     isLoading: isLoadingFavorites,
     isError: isErrorFavorites,
-  } = useQuery<RoteiroDetalhado[]>({
-    queryKey: [roteirosQueryKey, "favorites"],
+  } = useQuery<PageResponse<RoteiroDetalhado>>({
+    queryKey: [roteirosQueryKey, "favorites", page], // Adicionado page na key
     queryFn: async () => {
-      if (!userId) return [];
+      if (!userId) return { content: [], totalPages: 0 } as any;
       const response = await api.get('/roadmaps/favorites', {
-        params: { userId }
+        params: { 
+          userId, 
+          page: showOnlyFavorites ? page : 0, 
+          size: pageSize 
+        }
       });
       return response.data;
     },
-    enabled: !!userId,
+    enabled: !!userId && showOnlyFavorites, // Só busca se estiver na aba "Favoritos"
+    placeholderData: keepPreviousData,
   });
 
+  // Query auxiliar para obter IDs dos favoritos (para marcar o coração corretamente na aba "Meus Roteiros")
+  // Nota: Isso é necessário porque a lista paginada de favoritos pode não conter todos os IDs
+  const { data: allFavoritesIds = new Set() } = useQuery({
+    queryKey: [roteirosQueryKey, "all_favorites_ids"],
+    queryFn: async () => {
+      if (!userId) return new Set();
+      // Busca uma lista simplificada ou maior para mapear os corações.
+      // Se o backend suportasse retornar apenas IDs seria ideal.
+      // Aqui vamos buscar a primeira página com tamanho maior como fallback
+      const response = await api.get('/roadmaps/favorites', {
+        params: { userId, page: 0, size: 100 } 
+      });
+      return new Set(response.data.content.map((r: any) => r.id));
+    },
+    enabled: !!userId && !showOnlyFavorites, // Só precisa disso na aba "Meus Roteiros"
+    staleTime: 1000 * 60 * 5 // Cache por 5 minutos
+  });
 
-  const favoriteIds = useMemo(() => {
-    return new Set(favoriteRoteiros.map((r) => r.id));
-  }, [favoriteRoteiros]);
-
-  const processedRoteiros = useMemo(() => {
-    return myRoteiros.map((roteiro) => ({
-      ...roteiro,
-      isFavorited: favoriteIds.has(roteiro.id),
-    }));
-  }, [myRoteiros, favoriteIds]);
-
-  const displayedRoadmaps = useMemo(() => {
+  // Processamento dos dados para exibição
+  const displayedData = useMemo(() => {
     if (showOnlyFavorites) {
-      return favoriteRoteiros.map(r => ({ ...r, isFavorited: true }));
+      if (!favoriteRoteirosPage) return { content: [], totalPages: 0 };
+      // Na aba favoritos, todos são favoritados
+      const content = favoriteRoteirosPage.content.map(r => ({ ...r, isFavorited: true }));
+      return { ...favoriteRoteirosPage, content };
+    } else {
+      if (!myRoteirosPage) return { content: [], totalPages: 0 };
+      // Na aba meus roteiros, verifica se o ID está no set de favoritos
+      const content = myRoteirosPage.content.map(r => ({
+        ...r,
+        isFavorited: allFavoritesIds.has(r.id)
+      }));
+      return { ...myRoteirosPage, content };
     }
-
-    return processedRoteiros;
-  }, [processedRoteiros, favoriteRoteiros, showOnlyFavorites]);
+  }, [showOnlyFavorites, myRoteirosPage, favoriteRoteirosPage, allFavoritesIds]);
 
   const deleteRoteiroMutation = useMutation({
     mutationFn: (id: string) => deleteRoteiro(id, userId!),
@@ -117,89 +164,25 @@ const Roteiros = () => {
 
   const favoriteMutation = useMutation({
     mutationFn: (roteiro: RoteiroDetalhado) => favoriteRoteiro(roteiro.id, userId!),
-    onMutate: async (roteiroToFavorite): Promise<OptimisticFavoriteContext> => {
-
-      await queryClient.cancelQueries({ queryKey: roteirosQueryKey });
-      const previousMine = queryClient.getQueryData<RoteiroDetalhado[]>([roteirosQueryKey, "mine"]);
-      const previousFavorites = queryClient.getQueryData<RoteiroDetalhado[]>([roteirosQueryKey, "favorites"]);
-      if (previousMine) {
-        queryClient.setQueryData<RoteiroDetalhado[]>(
-          [roteirosQueryKey, "mine"],
-          (old) => old?.map(r =>
-            r.id === roteiroToFavorite.id ? { ...r, isFavorited: true } : r
-          ) || []
-        );
-      }
-
-      if (previousFavorites) {
-        queryClient.setQueryData<RoteiroDetalhado[]>(
-          [roteirosQueryKey, "favorites"],
-          (old) => [...(old || []), { ...roteiroToFavorite, isFavorited: true }]
-        );
-      }
-      
-      return { previousMine, previousFavorites };
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousMine) {
-        queryClient.setQueryData([roteirosQueryKey, "mine"], context.previousMine);
-      }
-      if (context?.previousFavorites) {
-        queryClient.setQueryData([roteirosQueryKey, "favorites"], context.previousFavorites);
-      }
-      toast({ title: "Erro ao favoritar", description: (err as Error).message, variant: "destructive" });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: roteirosQueryKey });
-    },
     onSuccess: () => {
       toast({ title: "Roteiro favoritado!" });
+      queryClient.invalidateQueries({ queryKey: roteirosQueryKey });
+    },
+    onError: (err) => {
+      toast({ title: "Erro ao favoritar", description: (err as Error).message, variant: "destructive" });
     }
   });
 
   const unfavoriteMutation = useMutation({
     mutationFn: (roteiro: RoteiroDetalhado) => unfavoriteRoteiro(roteiro.id, userId!),
-    onMutate: async (roteiroToUnfavorite): Promise<OptimisticFavoriteContext> => {
-      await queryClient.cancelQueries({ queryKey: roteirosQueryKey });
-
-      const previousMine = queryClient.getQueryData<RoteiroDetalhado[]>([roteirosQueryKey, "mine"]);
-      const previousFavorites = queryClient.getQueryData<RoteiroDetalhado[]>([roteirosQueryKey, "favorites"]);
-
-      if (previousMine) {
-        queryClient.setQueryData<RoteiroDetalhado[]>(
-          [roteirosQueryKey, "mine"],
-          (old) => old?.map(r =>
-            r.id === roteiroToUnfavorite.id ? { ...r, isFavorited: false } : r
-          ) || []
-        );
-      }
-
-      if (previousFavorites) {
-        queryClient.setQueryData<RoteiroDetalhado[]>(
-          [roteirosQueryKey, "favorites"],
-          (old) => old?.filter(r => r.id !== roteiroToUnfavorite.id) || []
-        );
-      }
-
-      return { previousMine, previousFavorites };
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousMine) {
-        queryClient.setQueryData([roteirosQueryKey, "mine"], context.previousMine);
-      }
-      if (context?.previousFavorites) {
-        queryClient.setQueryData([roteirosQueryKey, "favorites"], context.previousFavorites);
-      }
-      toast({ title: "Erro ao desfavoritar", description: (err as Error).message, variant: "destructive" });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: roteirosQueryKey });
-    },
     onSuccess: () => {
       toast({ title: "Roteiro desfavoritado." });
+      queryClient.invalidateQueries({ queryKey: roteirosQueryKey });
+    },
+    onError: (err) => {
+      toast({ title: "Erro ao desfavoritar", description: (err as Error).message, variant: "destructive" });
     }
   });
-
 
   const handleDelete = (id: string) => {
     if (window.confirm("Tem certeza que deseja excluir este roteiro?")) {
@@ -215,10 +198,10 @@ const Roteiros = () => {
     }
   };
 
-  const isLoading = isLoadingMine || isLoadingFavorites;
-  const isError = isErrorMine || isErrorFavorites;
+  const isLoading = (showOnlyFavorites ? isLoadingFavorites : isLoadingMine);
+  const isError = (showOnlyFavorites ? isErrorFavorites : isErrorMine);
 
-  if (isLoading) {
+  if (isLoading && !displayedData.content.length) {
     return (
       <div className="flex justify-center items-center min-h-screen p-6">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -238,9 +221,13 @@ const Roteiros = () => {
     <div className="min-h-screen p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Meus Roteiros</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">
+            {showOnlyFavorites ? "Roteiros Favoritos" : "Meus Roteiros"}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Crie e organize suas atividades de viagem
+            {showOnlyFavorites 
+              ? "Roteiros que você curtiu para ver depois" 
+              : "Crie e organize suas atividades de viagem"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -250,7 +237,7 @@ const Roteiros = () => {
             className="gap-2"
           >
             <Heart 
-              className="w-4 h-4 fill-red-500 text-red-500" 
+              className={`w-4 h-4 ${showOnlyFavorites ? 'fill-white' : 'fill-red-500 text-red-500'}`} 
             />
             <span className="hidden sm:inline">Favoritos</span>
           </Button>
@@ -264,21 +251,21 @@ const Roteiros = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {displayedRoadmaps.map((roteiro) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {displayedData.content.map((roteiro) => {
           
           const isFavoriting = (favoriteMutation.isPending || unfavoriteMutation.isPending) && 
                                (favoriteMutation.variables?.id === roteiro.id || unfavoriteMutation.variables?.id === roteiro.id);
 
           return (
-            <Card key={roteiro.id} className="p-5 hover:shadow-medium transition-smooth">
-              <div className="space-y-4">
+            <Card key={roteiro.id} className="p-5 hover:shadow-medium transition-smooth flex flex-col">
+              <div className="space-y-4 flex-1">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <Map className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg mb-1">{roteiro.title}</h3>
+                    <h3 className="font-semibold text-lg mb-1 truncate" title={roteiro.title}>{roteiro.title}</h3>
                     {roteiro.description && (
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                         {roteiro.description}
@@ -286,14 +273,14 @@ const Roteiros = () => {
                     )}
                     {roteiro.tags && roteiro.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
-                        {roteiro.tags.slice(0, 4).map((tag, index) => (
-                          <Badge key={index} variant="default" className="text-xs">
+                        {roteiro.tags.slice(0, 3).map((tag, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
                         ))}
-                        {roteiro.tags.length > 4 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{roteiro.tags.length - 4}
+                        {roteiro.tags.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{roteiro.tags.length - 3}
                           </Badge>
                         )}
                       </div>
@@ -302,60 +289,63 @@ const Roteiros = () => {
                   
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
+                    className="h-8 w-8 -mt-1 -mr-2"
                     onClick={() => handleFavoriteToggle(roteiro)}
                     disabled={isFavoriting}
                     title={roteiro.isFavorited ? "Desfavoritar" : "Favoritar"}
-                    className="flex-shrink-0"
                   >
                     {isFavoriting ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Heart 
-                        className={`w-4 h-4 ${roteiro.isFavorited ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} 
+                        className={`w-4 h-4 transition-colors ${roteiro.isFavorited ? 'fill-red-500 text-red-500' : 'text-muted-foreground hover:text-red-500'}`} 
                       />
                     )}
                   </Button>
                 </div>
+              </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <span className="text-sm text-muted-foreground">
-                    {roteiro.activities?.length || 0} {roteiro.activities?.length === 1 ? 'atividade' : 'atividades'}
-                  </span>
+              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-medium">
+                  {roteiro.activities?.length || 0} atividades
+                </span>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/roteiros/${roteiro.id}/editar`)}
-                      title="Editar roteiro"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => navigate(`/roteiros/${roteiro.id}/criar-itinerario`)}
-                      title="Converter em itinerário"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                      Converter
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(roteiro.id)}
-                      disabled={deleteRoteiroMutation.isPending && deleteRoteiroMutation.variables === roteiro.id}
-                      title="Excluir roteiro"
-                    >
-                      {deleteRoteiroMutation.isPending && deleteRoteiroMutation.variables === roteiro.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      )}
-                    </Button>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => navigate(`/roteiros/${roteiro.id}/editar`)}
+                    title="Editar roteiro"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDelete(roteiro.id)}
+                    disabled={deleteRoteiroMutation.isPending && deleteRoteiroMutation.variables === roteiro.id}
+                    title="Excluir roteiro"
+                  >
+                    {deleteRoteiroMutation.isPending && deleteRoteiroMutation.variables === roteiro.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                  
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="ml-1 h-8 px-3 text-xs gap-1.5"
+                    onClick={() => navigate(`/roteiros/${roteiro.id}/criar-itinerario`)}
+                  >
+                    <ArrowRight className="w-3 h-3" />
+                    Itinerário
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -363,24 +353,32 @@ const Roteiros = () => {
         })}
       </div>
 
-      {displayedRoadmaps.length === 0 && !isLoading && (
-        <Card className="p-8 text-center space-y-4 border-dashed">
+      {displayedData.content.length > 0 && (
+         <PaginationControl 
+           currentPage={page} 
+           totalPages={displayedData.totalPages} 
+           onPageChange={setPage} 
+         />
+      )}
+
+      {displayedData.content.length === 0 && !isLoading && (
+        <Card className="p-12 text-center space-y-4 border-dashed bg-muted/20">
           <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
             <Map className="w-8 h-8 text-muted-foreground" />
           </div>
           <div>
-            <h3 className="font-semibold mb-2">
-              {showOnlyFavorites ? "Nenhum roteiro favoritado" : "Nenhum roteiro criado"}
+            <h3 className="font-semibold text-lg mb-2">
+              {showOnlyFavorites ? "Nenhum favorito encontrado" : "Nenhum roteiro encontrado"}
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground max-w-sm mx-auto">
               {showOnlyFavorites 
-                ? "Adicione roteiros aos seus favoritos para vê-los aqui." 
-                : "Crie seu primeiro roteiro com atividades para sua viagem."}
+                ? "Você ainda não favoritou nenhum roteiro. Explore a comunidade para encontrar inspiração!" 
+                : "Você ainda não criou nenhum roteiro. Comece agora para planejar sua próxima viagem."}
             </p>
           </div>
           {!showOnlyFavorites && (
             <Link to="/roteiros/novo">
-              <Button className="gap-2">
+              <Button className="mt-2 gap-2">
                 <Plus className="w-4 h-4" />
                 Criar Primeiro Roteiro
               </Button>

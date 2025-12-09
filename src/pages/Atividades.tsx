@@ -1,46 +1,38 @@
-import { Plus, Trash2, Edit, Loader2, MapPin } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Plus, Loader2, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/services/api/api";
-
-type Atividade = {
-  id: string;
-  name: string;
-  description?: string;
-  location: string;
-  tags?: string[];
-};
+import { fetchAtividades, Page, Atividade } from "@/services/api/roteirosService";
+import { PaginationControl } from "@/components/common/PaginationControl";
 
 const Atividades = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.id;
+  const [page, setPage] = useState(0);
+  const pageSize = 9; // Mostra 9 itens por página (Grid 3x3)
 
-  // Buscar atividades
+  // Buscar atividades com paginação
   const {
-    data: atividades = [],
+    data: atividadesPage,
     isLoading,
     isError,
-  } = useQuery<Atividade[]>({
-    queryKey: ["atividades", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      const response = await api.get('/activities', {
-        params: { userId }
-      });
-      return Array.isArray(response.data) ? response.data : response.data.content || [];
-    },
+  } = useQuery<Page<Atividade>>({
+    queryKey: ["atividades", userId, page],
+    queryFn: () => fetchAtividades(userId!, page, pageSize),
     enabled: !!userId,
+    placeholderData: keepPreviousData, // Mantém os dados da página anterior enquanto carrega a próxima
   });
 
+  // Extrai o conteúdo e metadados da página
+  const atividades = atividadesPage?.content || [];
+  const totalPages = atividadesPage?.totalPages || 0;
 
-
-  if (isLoading) {
+  // Mostra loading apenas se não houver dados anteriores (primeira carga)
+  if (isLoading && !atividades.length) {
     return (
       <div className="flex justify-center items-center min-h-screen p-6">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -77,14 +69,16 @@ const Atividades = () => {
       {/* Lista de atividades */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {atividades.map((atividade) => (
-          <Card key={atividade.id} className="p-5 hover:shadow-medium transition-smooth">
-            <div className="space-y-4">
+          <Card key={atividade.id} className="p-5 hover:shadow-medium transition-smooth flex flex-col">
+            <div className="space-y-4 flex-1">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <MapPin className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-lg mb-1">{atividade.name}</h3>
+                  <h3 className="font-semibold text-lg mb-1 truncate" title={atividade.name}>
+                    {atividade.name}
+                  </h3>
                   {atividade.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                       {atividade.description}
@@ -92,8 +86,8 @@ const Atividades = () => {
                   )}
                   {atividade.location && (
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {atividade.location}
+                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{atividade.location}</span>
                     </p>
                   )}
                 </div>
@@ -119,20 +113,29 @@ const Atividades = () => {
         ))}
       </div>
 
-      {/* Empty state */}
+      {/* Controle de Paginação */}
+      {atividades.length > 0 && (
+        <PaginationControl 
+          currentPage={page} 
+          totalPages={totalPages} 
+          onPageChange={setPage} 
+        />
+      )}
+
+      {/* Empty state (Estado vazio) */}
       {atividades.length === 0 && !isLoading && (
-        <Card className="p-8 text-center space-y-4 border-dashed">
+        <Card className="p-8 text-center space-y-4 border-dashed bg-muted/20">
           <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
             <Plus className="w-8 h-8 text-muted-foreground" />
           </div>
           <div>
             <h3 className="font-semibold mb-2">Nenhuma atividade criada</h3>
-            <p className="text-sm text-muted-foreground">
-              Crie sua primeira atividade para incluir nos seus roteiros
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              Crie sua primeira atividade para incluir nos seus roteiros personalizados.
             </p>
           </div>
           <Link to="/atividades/nova">
-            <Button className="gap-2">
+            <Button className="mt-2 gap-2">
               <Plus className="w-4 h-4" />
               Criar Primeira Atividade
             </Button>
