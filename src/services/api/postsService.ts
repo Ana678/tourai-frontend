@@ -114,7 +114,7 @@ const fetchComments = async ({ pageParam, postId, quantity }: { pageParam?: stri
 export const createComment = async ({ postId, userId, content }: CreateCommentInput): Promise<CommentResponse> => {
     const response = await api.post<CommentResponse>(`/comments/${postId}`, content, {
         params: { userId },
-        headers: { 'Content-Type': 'text/plain' } // Informa ao backend que estamos enviando texto
+        headers: { 'Content-Type': 'text/plain' } 
     });
     return response.data;
 }
@@ -183,7 +183,7 @@ export const useCreateComment = () => {
       queryClient.invalidateQueries({ queryKey: commentKeys.list(postId) });
 
       queryClient.setQueryData<InfiniteData<PostResponse[]>>(
-        postKeys.lists(), // A chave da query infinita de posts
+        postKeys.lists(), 
         (oldData) => {
           if (!oldData) {
             return undefined;
