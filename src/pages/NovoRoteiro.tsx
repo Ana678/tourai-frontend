@@ -18,7 +18,7 @@ import {
 } from "@/services/api/roteirosService";
 
 // Tags do ROTEIRO (categorias gerais)
-const TAGS_ROTEIRO = [
+export const TAGS_ROTEIRO = [
   "Praia",
   "Montanha",
   "Cidade",

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Map, Calendar, MessageSquare, User, LogOut, Activity, EarthIcon, Plane } from "lucide-react";
+import { Home, Map, Calendar, MessageSquare, User, LogOut, Activity, EarthIcon, Plane, Search } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const Header = () => {
@@ -9,6 +9,7 @@ const Header = () => {
     { path: "/", icon: Home, label: "Início" },
     { path: "/atividades", icon: EarthIcon, label: "Atividades" },
     { path: "/roteiros", icon: Map, label: "Roteiros" },
+    { path: "/buscar-usuarios", icon: Search, label: "Amigos" },
     { path: "/itinerarios", icon: Calendar, label: "Itinerários" },
     { path: "/postagens", icon: MessageSquare, label: "Postagens" },
     { path: "/perfil", icon: User, label: "Perfil" },
