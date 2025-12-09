@@ -2,6 +2,7 @@ import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
+  InfiniteData,
 } from "@tanstack/react-query";
 import { api } from "./api";
 
@@ -26,7 +27,8 @@ export interface NotificationResponse {
   received: boolean;
   createdAt: string;
   payload: string;
-  entityId: number;
+  actionCompleted: boolean; 
+  entityId: number; 
 }
 
 export const notificationKeys = {
@@ -39,11 +41,16 @@ export const notificationKeys = {
 
 export const getRecentNotifications = async (
   userId: number,
-  quantity: number,
+  page: number, 
+  size: number,
   type?: NotificationType | null
 ): Promise<NotificationResponse[]> => {
-  const params: any = { userId, quantity };
-
+  const params: any = { 
+    userId, 
+    page, 
+    size  
+  };
+  
   if (type) {
     params.type = type;
   }
@@ -58,6 +65,10 @@ export const markNotificationAsRead = async (notificationId: number): Promise<vo
   await api.patch(`/notifications/${notificationId}/read`);
 };
 
+export const markActionAsCompleted = async (notificationId: number): Promise<void> => {
+  await api.patch(`/notifications/${notificationId}/completed`);
+};
+
 export const respondInvite = async ({
   entityId,
   action,
@@ -65,25 +76,32 @@ export const respondInvite = async ({
   entityId: number;
   action: "accept" | "reject";
 }): Promise<void> => {
+  const endpointAction = action === "accept" ? "accept" : "decline";
   
-  console.log(`Action: ${action} on entity: ${entityId}`);
-  return new Promise((resolve) => setTimeout(resolve, 500));
+  await api.post(`/invites/${entityId}/${endpointAction}`);
 };
 
 export const useGetNotifications = (
   userId: number | undefined,
   type: NotificationType | null = null,
-  quantity: number = 5
+  pageSize: number = 5 
 ) => {
   return useInfiniteQuery({
     queryKey: notificationKeys.list(userId || 0, type || "all"),
-    queryFn: ({ pageParam = quantity }) => {
+    initialPageParam: 0,
+
+    queryFn: ({ pageParam = 0 }) => {
       if (!userId) return Promise.resolve([]);
-      return getRecentNotifications(userId, pageParam, type);
+      return getRecentNotifications(userId, pageParam, pageSize, type);
     },
-    initialPageParam: quantity,
-    getNextPageParam: (lastPage, allPages, lastPageParam) => {
-      return lastPage.length >= lastPageParam ? lastPageParam + 5 : undefined;
+
+    getNextPageParam: (lastPage, allPages) => {
+
+      if (!lastPage || lastPage.length < pageSize) {
+        return undefined;
+      }
+      
+      return allPages.length; 
     },
     enabled: !!userId,
   });
@@ -91,9 +109,40 @@ export const useGetNotifications = (
 
 export const useMarkAsRead = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: markNotificationAsRead,
-    onSuccess: () => {
+    
+    onMutate: async (notificationId) => {
+      await queryClient.cancelQueries({ queryKey: notificationKeys.all });
+      const previousNotifications = queryClient.getQueriesData({ queryKey: notificationKeys.all });
+
+      queryClient.setQueriesData<InfiniteData<NotificationResponse[]>>(
+        { queryKey: notificationKeys.all },
+        (oldData) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) =>
+              page.map((notif) =>
+                notif.id === notificationId 
+                  ? { ...notif, received: true }
+                  : notif
+              )
+            ),
+          };
+        }
+      );
+      return { previousNotifications };
+    },
+    onError: (_err, _newTodo, context) => {
+      if (context?.previousNotifications) {
+        context.previousNotifications.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
     },
   });
@@ -101,8 +150,14 @@ export const useMarkAsRead = () => {
 
 export const useRespondInvite = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: respondInvite,
+    mutationFn: async ({ entityId, notificationId, action }: { entityId: number, notificationId: number, action: "accept" | "reject" }) => {
+
+      const endpointAction = action === "accept" ? "accept" : "decline";
+      await api.post(`/invites/${entityId}/${endpointAction}`);
+      await markActionAsCompleted(notificationId);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
     },
