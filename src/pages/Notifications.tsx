@@ -1,14 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Bell, 
-  UserPlus, 
-  Calendar, 
-  Heart, 
-  MessageCircle, 
-  Check, 
-  X,
-  Loader2
+  Bell, UserPlus, Calendar, Heart, MessageCircle, 
+  Check, X, Loader2, CheckCircle2 
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,16 +44,22 @@ const Notificacoes = () => {
   const { mutate: respondInvite, isPending: isResponding } = useRespondInvite();
   const { mutate: markAsRead } = useMarkAsRead();
 
+  const handleMarkAsRead = (notif: NotificationResponse) => {
+    if (!notif.received) {
+      markAsRead(notif.id);
+    }
+  };
+
   const handleInviteAction = (notif: NotificationResponse, action: "accept" | "reject") => {
     if (!notif.entityId) return;
 
     respondInvite(
-      { entityId: notif.entityId, action },
+      { entityId: notif.entityId, notificationId: notif.id, action },
       {
         onSuccess: () => {
           toast({
             title: action === "accept" ? "Convite aceito!" : "Convite recusado.",
-            variant: action === "accept" ? "default" : "destructive",
+            variant: "default",
           });
         },
         onError: () => {
@@ -74,16 +74,11 @@ const Notificacoes = () => {
 
   const getIcon = (type: NotificationType) => {
     switch (type) {
-      case NotificationType.FOLLOW:
-        return <UserPlus className="w-4 h-4 text-white" />;
-      case NotificationType.ROADMAP_INVITATION:
-        return <Calendar className="w-4 h-4 text-white" />;
-      case NotificationType.LIKE:
-        return <Heart className="w-4 h-4 text-white" />;
-      case NotificationType.COMMENT:
-        return <MessageCircle className="w-4 h-4 text-white" />;
-      default:
-        return <Bell className="w-4 h-4 text-white" />;
+      case NotificationType.FOLLOW: return <UserPlus className="w-3 h-3 text-white" />;
+      case NotificationType.ROADMAP_INVITATION: return <Calendar className="w-3 h-3 text-white" />;
+      case NotificationType.LIKE: return <Heart className="w-3 h-3 text-white" />;
+      case NotificationType.COMMENT: return <MessageCircle className="w-3 h-3 text-white" />;
+      default: return <Bell className="w-3 h-3 text-white" />;
     }
   };
 
@@ -106,29 +101,37 @@ const Notificacoes = () => {
       
       case NotificationType.ROADMAP_INVITATION:
         return (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               {sourceName} convidou você para o itinerário <span className="font-medium text-foreground">"{notif.payload}"</span>.
             </p>
-            <div className="flex gap-2 mt-1">
-              <Button 
-                size="sm" 
-                className="h-8 px-4" 
-                onClick={() => handleInviteAction(notif, "accept")}
-                disabled={isResponding}
-              >
-                <Check className="w-4 h-4 mr-2" /> Aceitar
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="h-8 px-4"
-                onClick={() => handleInviteAction(notif, "reject")}
-                disabled={isResponding}
-              >
-                <X className="w-4 h-4 mr-2" /> Recusar
-              </Button>
-            </div>
+            
+            {notif.actionCompleted ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md w-fit">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Respondido</span>
+              </div>
+            ) : (
+              <div className="flex gap-3 mt-1">
+                <Button 
+                  size="sm" 
+                  className="h-10 px-6 font-medium" 
+                  onClick={() => handleInviteAction(notif, "accept")}
+                  disabled={isResponding}
+                >
+                  <Check className="w-4 h-4 mr-2" /> Aceitar
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-10 px-6 font-medium"
+                  onClick={() => handleInviteAction(notif, "reject")}
+                  disabled={isResponding}
+                >
+                  <X className="w-4 h-4 mr-2" /> Recusar
+                </Button>
+              </div>
+            )}
           </div>
         );
 
@@ -202,18 +205,17 @@ const Notificacoes = () => {
           filteredNotifications.map((notif) => (
             <Card 
               key={notif.id} 
-              className={`p-4 transition-all ${
+              className={`p-4 transition-all relative ${
                 !notif.received 
                   ? "bg-primary/5 border-primary/20" 
                   : "bg-white border-border shadow-sm"
               }`}
-              onMouseEnter={() => {
-                if (!notif.received) markAsRead(notif.id);
-              }}
+              onMouseEnter={() => handleMarkAsRead(notif)}
+              onClick={() => handleMarkAsRead(notif)}
             >
-              <div className="flex gap-4">
-                <div className="relative shrink-0">
-                  <Avatar className="w-10 h-10 border">
+              <div className="flex gap-4 cursor-default">
+                <div className="relative shrink-0 w-10 h-10">
+                  <Avatar className="w-full h-full border">
                     <AvatarImage src={notif.source.avatar_url || undefined} />
                     <AvatarFallback>{notif.source.name[0]}</AvatarFallback>
                   </Avatar>
@@ -223,7 +225,9 @@ const Notificacoes = () => {
                 </div>
 
                 <div className="flex-1 space-y-1">
-                  {renderContent(notif)}
+                  <div onClick={(e) => e.stopPropagation()}>
+                     {renderContent(notif)}
+                  </div>
                   <p className="text-xs text-muted-foreground/60">
                     {formatDate(notif.createdAt)}
                   </p>
