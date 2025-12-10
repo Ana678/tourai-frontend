@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, Clock, MapPin, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -11,15 +11,22 @@ import {
   useGetItinerary,
   useUpdateItinerary,
 } from "@/services/api/itinerariesService";
+import { useCreateInvite } from "@/services/api/invitesService";
+import InviteParticipants from "@/components/InviteParticipants";
+import { useAuth } from "@/hooks/useAuth";
 
 const Itinerary = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: itinerary, isLoading, isError } = useGetItinerary(Number(id));
   const { mutate: updateItinerary } = useUpdateItinerary();
   const { mutate: deleteItinerary } = useDeleteItinerary();
+  const { mutate: createInvite } = useCreateInvite();
+
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const handleToggleActivity = (activityId: number, completed: boolean) => {
     updateItinerary(
@@ -100,15 +107,27 @@ const Itinerary = () => {
           </h1>
         </div>
 
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleDeleteItinerary}
-          className="flex items-center gap-2"
-        >
-          <Trash2 className="w-4 h-4" />
-          Excluir Itinerário
-        </Button>
+        <div className="flex gap-4 items-center">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setInviteOpen(true)}
+          >
+            <Users className="w-4 h-4" />
+          </Button>
+
+          {itinerary?.user?.id === user?.id && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteItinerary}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Excluir Itinerário
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="p-4">
@@ -165,6 +184,13 @@ const Itinerary = () => {
           </Card>
         ))}
       </div>
+      {itinerary && (
+        <InviteParticipants
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          itinerary={itinerary}
+        />
+      )}
     </div>
   );
 };

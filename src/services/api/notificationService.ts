@@ -10,7 +10,7 @@ export enum NotificationType {
   FOLLOW = "FOLLOW",
   ROADMAP_INVITATION = "ROADMAP_INVITATION",
   LIKE = "LIKE",
-  COMMENT = "COMMENT"
+  COMMENT = "COMMENT",
 }
 
 export interface NotificationUser {
@@ -27,8 +27,8 @@ export interface NotificationResponse {
   received: boolean;
   createdAt: string;
   payload: string;
-  actionCompleted: boolean; 
-  entityId: number; 
+  actionCompleted: boolean;
+  entityId: number;
 }
 
 export const notificationKeys = {
@@ -38,34 +38,40 @@ export const notificationKeys = {
     [...notificationKeys.lists(), userId, type] as const,
 };
 
-
 export const getRecentNotifications = async (
   userId: number,
-  page: number, 
+  page: number,
   size: number,
   type?: NotificationType | null
 ): Promise<NotificationResponse[]> => {
-  const params: any = { 
-    userId, 
-    page, 
-    size  
+  const params: any = {
+    userId,
+    page,
+    size,
   };
-  
+
   if (type) {
     params.type = type;
   }
 
-  const response = await api.get<NotificationResponse[]>("/notifications/recent", {
-    params,
-  });
+  const response = await api.get<NotificationResponse[]>(
+    "/notifications/recent",
+    {
+      params,
+    }
+  );
   return response.data;
 };
 
-export const markNotificationAsRead = async (notificationId: number): Promise<void> => {
+export const markNotificationAsRead = async (
+  notificationId: number
+): Promise<void> => {
   await api.patch(`/notifications/${notificationId}/read`);
 };
 
-export const markActionAsCompleted = async (notificationId: number): Promise<void> => {
+export const markActionAsCompleted = async (
+  notificationId: number
+): Promise<void> => {
   await api.patch(`/notifications/${notificationId}/completed`);
 };
 
@@ -77,14 +83,14 @@ export const respondInvite = async ({
   action: "accept" | "reject";
 }): Promise<void> => {
   const endpointAction = action === "accept" ? "accept" : "decline";
-  
+
   await api.post(`/invites/${entityId}/${endpointAction}`);
 };
 
 export const useGetNotifications = (
   userId: number | undefined,
   type: NotificationType | null = null,
-  pageSize: number = 5 
+  pageSize: number = 5
 ) => {
   return useInfiniteQuery({
     queryKey: notificationKeys.list(userId || 0, type || "all"),
@@ -96,12 +102,11 @@ export const useGetNotifications = (
     },
 
     getNextPageParam: (lastPage, allPages) => {
-
       if (!lastPage || lastPage.length < pageSize) {
         return undefined;
       }
-      
-      return allPages.length; 
+
+      return allPages.length;
     },
     enabled: !!userId,
   });
@@ -112,10 +117,12 @@ export const useMarkAsRead = () => {
 
   return useMutation({
     mutationFn: markNotificationAsRead,
-    
+
     onMutate: async (notificationId) => {
       await queryClient.cancelQueries({ queryKey: notificationKeys.all });
-      const previousNotifications = queryClient.getQueriesData({ queryKey: notificationKeys.all });
+      const previousNotifications = queryClient.getQueriesData({
+        queryKey: notificationKeys.all,
+      });
 
       queryClient.setQueriesData<InfiniteData<NotificationResponse[]>>(
         { queryKey: notificationKeys.all },
@@ -125,7 +132,7 @@ export const useMarkAsRead = () => {
             ...oldData,
             pages: oldData.pages.map((page) =>
               page.map((notif) =>
-                notif.id === notificationId 
+                notif.id === notificationId
                   ? { ...notif, received: true }
                   : notif
               )
@@ -152,14 +159,23 @@ export const useRespondInvite = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ entityId, notificationId, action }: { entityId: number, notificationId: number, action: "accept" | "reject" }) => {
-
+    mutationFn: async ({
+      entityId,
+      notificationId,
+      action,
+    }: {
+      entityId: number;
+      notificationId: number;
+      action: "accept" | "reject";
+    }) => {
       const endpointAction = action === "accept" ? "accept" : "decline";
       await api.post(`/invites/${entityId}/${endpointAction}`);
       await markActionAsCompleted(notificationId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ["itineraries"] });
+      queryClient.invalidateQueries({ queryKey: ["itinerary"] });
     },
   });
 };

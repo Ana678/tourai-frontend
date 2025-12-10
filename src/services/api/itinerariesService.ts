@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, queryClient } from "./api";
+import { InviteDTO } from "./invitesService";
 
 export interface CreateItineraryDTO {
   userId: number;
@@ -22,6 +23,8 @@ export interface ItineraryDTO {
   id: number;
   user: {
     id: number;
+    name: string;
+    profilePhotoUrl: string;
   };
   roadmap: {
     title: string;
@@ -37,6 +40,13 @@ export interface ItineraryDTO {
       mediaUrl: string;
     };
   }[];
+  participants: {
+    id: number;
+    name: string;
+    email: string;
+    profilePhotoUrl: string;
+  }[];
+  invites: Omit<InviteDTO, "itinerary">[];
 }
 
 export interface ItineraryPaginationDTO {
