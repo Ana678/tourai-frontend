@@ -26,6 +26,7 @@ type Atividade = {
   dia: number;
 };
 
+// Componente de Item Arrastável
 const SortableAtividade = ({ atividade, onHorarioChange, onDiaChange, diasDisponiveis }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: atividade.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -59,7 +60,7 @@ const ConverterRoteiro = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth(); // Pegamos o usuário logado aqui
+  const { user } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,7 +77,6 @@ const ConverterRoteiro = () => {
   );
 
   useEffect(() => {
-    // Só busca se tiver ID do roteiro E ID do usuário carregado
     if (id && user?.id) {
         fetchRoteiroData();
     }
@@ -84,11 +84,9 @@ const ConverterRoteiro = () => {
 
   const fetchRoteiroData = async () => {
     try {
-      // CORREÇÃO: Enviamos o userId como parâmetro para autenticar a visualização
       const { data } = await api.get(`/roadmaps/${id}`, {
         params: { userId: user?.id }
       });
-      
       setRoteiro(data);
       
       if (data.activities) {
@@ -142,7 +140,10 @@ const ConverterRoteiro = () => {
 
   const calcDias = (inicio: string, fim: string) => {
     if (!inicio || !fim) return 1;
-    const diff = Math.ceil((new Date(fim).getTime() - new Date(inicio).getTime()) / (86400000)) + 1;
+    // Cálculo seguro de dias entre datas
+    const start = new Date(inicio);
+    const end = new Date(fim);
+    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     return diff > 0 ? diff : 1;
   };
 
@@ -154,19 +155,29 @@ const ConverterRoteiro = () => {
 
     setSaving(true);
     try {
+      // 1. Calcular Datas Exatas para o Backend
+      // O backend espera OffsetDateTime (ISO String)
+      const atividadesPayload = atividades.map((ativ) => {
+        // Cria a data baseada no input de "dataInicio"
+        const dataBase = new Date(dataInicio);
+        // Adiciona os dias (dia 1 = dataInicio, dia 2 = dataInicio + 1, etc)
+        dataBase.setDate(dataBase.getDate() + (ativ.dia - 1));
+        
+        // Ajusta o horário
+        const [horas, minutos] = ativ.horario.split(':').map(Number);
+        dataBase.setHours(horas, minutos, 0, 0);
+
+        return {
+          activityId: Number(ativ.id),
+          time: dataBase.toISOString() // Formato aceito pelo Java: "2023-12-10T09:00:00.000Z"
+        };
+      });
+
+      // 2. Montar Payload Estrito conforme DTO Java
       const payload = {
-        title: roteiro?.title,
-        description: roteiro?.description,
-        startDate: dataInicio,
-        endDate: dataFim,
-        ownerId: user?.id,
-        roadmapId: id,
-        activities: atividades.map((a, idx) => ({
-          activityId: Number(a.id),
-          day: a.dia,
-          time: a.horario, 
-          order: idx
-        }))
+        userId: user?.id,
+        roadmapId: Number(id),
+        activities: atividadesPayload
       };
 
       await api.post("/itineraries", payload);
