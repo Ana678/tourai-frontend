@@ -1,11 +1,27 @@
 import { api } from './api';
 
+// --- Tipos de Paginação ---
+
+export interface Page<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  last: boolean;
+  size: number;
+  number: number;
+  first: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
+
+// --- Tipos de Entidades ---
+
 export type Roteiro = {
   id: string;
   title: string;
   description: string | null;
   tags?: string[];
-  activities: number;
+  activities: number; // Contagem de atividades
 };
 
 export type Atividade = {
@@ -26,21 +42,58 @@ export type CreateRoteiroDTO = {
   user_id: string | number;
 };
 
-export const fetchRoteiros = async (userId: string | number): Promise<Roteiro[]> => {
-  if (!userId) return [];
+export type CreateAtividadeDTO = {
+  name: string;
+  description: string;
+  location: string;
+  tags?: string[];
+};
+
+// --- Funções de Serviço ---
+
+export const fetchRoteiros = async (
+  userId: string | number, 
+  page: number = 0, 
+  size: number = 10
+): Promise<Page<Roteiro>> => {
+  if (!userId) {
+    return {
+      content: [],
+      totalPages: 0,
+      totalElements: 0,
+      last: true,
+      size,
+      number: page,
+      first: true,
+      numberOfElements: 0,
+      empty: true
+    };
+  }
+  
   try {
-    const response = await api.get('/roadmaps/mine', {
-      params: { userId }
+    // Faz a chamada tipando o retorno como Page<any> pois o backend retorna objetos crus
+    const response = await api.get<Page<any>>('/roadmaps/mine', {
+      params: { 
+        userId,
+        page, 
+        size  
+      }
     });
 
-    const roteirosFormatados = response.data.map((roteiro: any) => ({
+    // Formata os itens individuais da lista (content)
+    const roteirosFormatados = response.data.content.map((roteiro: any) => ({
       id: roteiro.id,
       title: roteiro.title,
       description: roteiro.description,
       tags: roteiro.tags || [],
       activities: roteiro.activities?.length || 0,
     }));
-    return roteirosFormatados;
+
+    // Retorna a estrutura da página mantendo os metadados, mas com o conteúdo formatado
+    return {
+      ...response.data,
+      content: roteirosFormatados
+    };
 
   } catch (error) {
     console.error("Erro ao buscar roteiros:", error);
@@ -48,23 +101,48 @@ export const fetchRoteiros = async (userId: string | number): Promise<Roteiro[]>
   }
 };
 
-export const fetchAtividades = async (userId: string | number): Promise<Atividade[]> => {
-  if (!userId) return [];
+export const fetchAtividades = async (
+  userId: string | number,
+  page: number = 0,
+  size: number = 10,
+  search: string = "" // Novo parâmetro
+): Promise<Page<Atividade>> => {
+  if (!userId) {
+     return { content: [], totalPages: 0, totalElements: 0, last: true, size, number: page, first: true, numberOfElements: 0, empty: true };
+  }
+
   try {
-    const response = await api.get('/activities', {
-      params: { userId }
+    // Passamos o 'search' para o backend
+    const response = await api.get<any>('/activities', {
+      params: { 
+        userId,
+        page,
+        size,
+        search: search || undefined // Só envia se tiver texto
+      }
     });
 
     const data = response.data;
 
-    if (Array.isArray(data)) {
-      return data;
-    }
     if (data && Array.isArray(data.content)) {
-      return data.content;
+      return data as Page<Atividade>;
     }
-    console.warn("A API /activities não devolveu um array.", data);
-    return [];
+
+    if (Array.isArray(data)) {
+        return {
+            content: data as Atividade[],
+            totalPages: 1,
+            totalElements: data.length,
+            size: data.length,
+            number: 0,
+            first: true,
+            last: true,
+            numberOfElements: data.length,
+            empty: data.length === 0
+        };
+    }
+
+    return { content: [], totalPages: 0, totalElements: 0 } as any;
 
   } catch (error) {
     console.error("Erro ao buscar atividades:", error);
@@ -116,13 +194,6 @@ export const deleteRoteiro = async (id: string, userId: string | number) => {
     console.error("Erro ao deletar roteiro:", error);
     throw error;
   }
-};
-
-export type CreateAtividadeDTO = {
-  name: string;
-  description: string;
-  location: string;
-  tags?: string[];
 };
 
 export const createAtividade = async (dto: CreateAtividadeDTO, userId: string | number) => {

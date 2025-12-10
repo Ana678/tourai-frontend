@@ -16,11 +16,13 @@ import CreateItinerary from "./pages/CreateItinerary";
 import AvaliarItinerario from "./pages/AvaliarItinerario";
 
 import Profile from "./pages/Profile";
+import ProfilePublic from "./pages/ProfilePublic"
 
 import { queryClient } from "./services/api/api";
 import Roteiros from "./pages/Roteiros";
 import NovoRoteiro from "./pages/NovoRoteiro";
 import EditarRoteiro from "./pages/EditarRoteiro";
+import ConverterRoteiro from "./pages/ConverterRoteiro";
 import Atividades from "./pages/Atividades";
 import NovaAtividade from "./pages/NovaAtividade";
 import BuscarUsuarios from "./pages/BuscarUsuarios";
@@ -72,6 +74,13 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/usuarios/:id" element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <ProfilePublic />
+                </MobileLayout>
+              </ProtectedRoute>
+            } />
             <Route
               path="/notificacoes"
               element={
@@ -195,6 +204,14 @@ const App = () => (
                 </ProtectedRoute>
               }
            />
+
+           <Route path="/roteiros/:id/converter" element={
+              <ProtectedRoute>
+                <MobileLayout>
+                  <ConverterRoteiro />
+                </MobileLayout>
+              </ProtectedRoute>
+            } />
 
           <Route path="*" element={<NotFound />} />
           </Routes>
