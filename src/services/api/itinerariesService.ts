@@ -3,7 +3,6 @@ import { api, queryClient } from "./api";
 import { InviteDTO } from "./invitesService";
 
 export interface CreateItineraryDTO {
-  userId: number;
   roadmapId: number;
   activities: {
     activityId: number;
@@ -79,7 +78,6 @@ export const deleteItinerary = async (id: number) => {
 };
 
 export const getItineraries = (params: {
-  userId: number;
   type?: "OWNED" | "PARTICIPATING";
   search?: string;
   page?: number;
@@ -101,7 +99,7 @@ export const useCreateItinerary = () => {
     mutationFn: createItinerary,
     onSuccess: (data, request) => {
       queryClient.invalidateQueries({
-        queryKey: ["itineraries", { userId: request.userId }],
+        queryKey: ["itineraries"],
       });
     },
   });
@@ -149,8 +147,7 @@ export const useGetItineraries = (params: {
 }) => {
   return useQuery({
     queryKey: ["itineraries", params],
-    queryFn: () => getItineraries({ ...params, userId: params.userId! }),
-    enabled: !!params.userId,
+    queryFn: () => getItineraries(params),
   });
 };
 

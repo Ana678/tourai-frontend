@@ -214,7 +214,7 @@ const CreateItinerary = () => {
     setSaving(true);
 
     createItinerary(
-      { roadmapId: roadmap.id, userId: user.id, activities: mappedActivities },
+      { roadmapId: roadmap.id, activities: mappedActivities },
       {
         onSuccess: () => {
           toast({

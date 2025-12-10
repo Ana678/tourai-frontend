@@ -16,13 +16,12 @@ import CreateItinerary from "./pages/CreateItinerary";
 import AvaliarItinerario from "./pages/AvaliarItinerario";
 
 import Profile from "./pages/Profile";
-import ProfilePublic from "./pages/ProfilePublic"
+import ProfilePublic from "./pages/ProfilePublic";
 
 import { queryClient } from "./services/api/api";
 import Roteiros from "./pages/Roteiros";
 import NovoRoteiro from "./pages/NovoRoteiro";
 import EditarRoteiro from "./pages/EditarRoteiro";
-import ConverterRoteiro from "./pages/ConverterRoteiro";
 import Atividades from "./pages/Atividades";
 import NovaAtividade from "./pages/NovaAtividade";
 import BuscarUsuarios from "./pages/BuscarUsuarios";
@@ -74,13 +73,16 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route path="/usuarios/:id" element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <ProfilePublic />
-                </MobileLayout>
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/usuarios/:id"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <ProfilePublic />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/notificacoes"
               element={
@@ -112,89 +114,89 @@ const App = () => (
               }
             />
             <Route
-                path="/itinerarios"
-                element={
+              path="/itinerarios"
+              element={
                 <ProtectedRoute>
-                    <MobileLayout>
+                  <MobileLayout>
                     <Itineraries />
-                    </MobileLayout>
+                  </MobileLayout>
                 </ProtectedRoute>
-                }
+              }
             />
             <Route
-                path="/itinerarios/:id"
-                element={
+              path="/itinerarios/:id"
+              element={
                 <ProtectedRoute>
-                    <MobileLayout>
+                  <MobileLayout>
                     <Itinerary />
-                    </MobileLayout>
+                  </MobileLayout>
                 </ProtectedRoute>
-                }
+              }
             />
 
-        <Route
-            path="/roteiros/:id/criar-itinerario"
-            element={
-            <ProtectedRoute>
-                <MobileLayout>
-                <CreateItinerary />
-                </MobileLayout>
-            </ProtectedRoute>
-            }
-        />
+            <Route
+              path="/roteiros/:id/criar-itinerario"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <CreateItinerary />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
 
-        <Route
-            path="/roteiros"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <Roteiros />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/roteiros/novo"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <NovoRoteiro />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/roteiros/:id/editar"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <EditarRoteiro />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/atividades"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <Atividades />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/atividades/nova"
-            element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <NovaAtividade />
-                </MobileLayout>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/roteiros"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <Roteiros />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roteiros/novo"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <NovoRoteiro />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roteiros/:id/editar"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <EditarRoteiro />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/atividades"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <Atividades />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/atividades/nova"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <NovaAtividade />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
+            <Route
               path="/buscar-usuarios"
               element={
                 <ProtectedRoute>
@@ -203,17 +205,20 @@ const App = () => (
                   </MobileLayout>
                 </ProtectedRoute>
               }
-           />
+            />
 
-           <Route path="/roteiros/:id/converter" element={
-              <ProtectedRoute>
-                <MobileLayout>
-                  <ConverterRoteiro />
-                </MobileLayout>
-              </ProtectedRoute>
-            } />
+            <Route
+              path="/roteiros/:id/converter"
+              element={
+                <ProtectedRoute>
+                  <MobileLayout>
+                    <CreateItinerary />
+                  </MobileLayout>
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
