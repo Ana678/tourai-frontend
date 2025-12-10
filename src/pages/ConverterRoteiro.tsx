@@ -26,10 +26,14 @@ type Atividade = {
   dia: number;
 };
 
-// Componente de Item Arrastável
+// Componente da Atividade Arrastável
 const SortableAtividade = ({ atividade, onHorarioChange, onDiaChange, diasDisponiveis }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: atividade.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   return (
     <div ref={setNodeRef} style={style} className="bg-card border border-border rounded-lg p-4 touch-none">
@@ -38,16 +42,31 @@ const SortableAtividade = ({ atividade, onHorarioChange, onDiaChange, diasDispon
           <GripVertical className="w-5 h-5 text-muted-foreground" />
         </div>
         <div className="flex-1 space-y-2">
-          <div><h4 className="font-semibold">{atividade.name}</h4><p className="text-sm text-muted-foreground">{atividade.location}</p></div>
+          <div>
+            <h4 className="font-semibold">{atividade.name}</h4>
+            <p className="text-sm text-muted-foreground">{atividade.location}</p>
+          </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Label className="text-sm">Dia</Label>
-              <select value={atividade.dia} onChange={(e) => onDiaChange(atividade.id, parseInt(e.target.value))} className="h-9 rounded-md border bg-background px-3 text-sm">
-                {Array.from({ length: diasDisponiveis }, (_, i) => i + 1).map((dia) => <option key={dia} value={dia}>Dia {dia}</option>)}
+              <select 
+                value={atividade.dia} 
+                onChange={(e) => onDiaChange(atividade.id, parseInt(e.target.value))} 
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              >
+                {Array.from({ length: diasDisponiveis }, (_, i) => i + 1).map((dia) => (
+                  <option key={dia} value={dia}>Dia {dia}</option>
+                ))}
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" /><Input type="time" value={atividade.horario} onChange={(e) => onHorarioChange(atividade.id, e.target.value)} className="w-32" />
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <Input 
+                type="time" 
+                value={atividade.horario} 
+                onChange={(e) => onHorarioChange(atividade.id, e.target.value)} 
+                className="w-32" 
+              />
             </div>
           </div>
         </div>
@@ -66,6 +85,8 @@ const ConverterRoteiro = () => {
   const [saving, setSaving] = useState(false);
   const [roteiro, setRoteiro] = useState<any>(null);
   const [atividades, setAtividades] = useState<Atividade[]>([]);
+  
+  // Estados do Formulário
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [local, setLocal] = useState("");
@@ -77,6 +98,7 @@ const ConverterRoteiro = () => {
   );
 
   useEffect(() => {
+    // Garante que só busca quando tiver ID do roteiro e ID do usuário
     if (id && user?.id) {
         fetchRoteiroData();
     }
@@ -84,19 +106,23 @@ const ConverterRoteiro = () => {
 
   const fetchRoteiroData = async () => {
     try {
+      // 1. Busca dados do roteiro no Backend Java
+      // Envia userId para validar permissão e evitar erro 403
       const { data } = await api.get(`/roadmaps/${id}`, {
         params: { userId: user?.id }
       });
+      
       setRoteiro(data);
       
+      // 2. Mapeia as atividades do roteiro para o formato do formulário
       if (data.activities) {
         const formatted = data.activities.map((a: any, index: number) => ({
           id: String(a.id),
           name: a.name,
           location: a.location,
           ordem: index,
-          horario: "09:00",
-          dia: 1,
+          horario: "09:00", // Horário padrão
+          dia: 1, // Dia padrão
         }));
         setAtividades(formatted);
       }
@@ -104,7 +130,7 @@ const ConverterRoteiro = () => {
       console.error(error);
       toast({ 
         title: "Erro ao carregar roteiro", 
-        description: "Você não tem permissão ou o roteiro não existe.",
+        description: "Não foi possível carregar os dados. Verifique se você tem permissão.",
         variant: "destructive" 
       });
       navigate("/roteiros");
@@ -140,10 +166,7 @@ const ConverterRoteiro = () => {
 
   const calcDias = (inicio: string, fim: string) => {
     if (!inicio || !fim) return 1;
-    // Cálculo seguro de dias entre datas
-    const start = new Date(inicio);
-    const end = new Date(fim);
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const diff = Math.ceil((new Date(fim).getTime() - new Date(inicio).getTime()) / (86400000)) + 1;
     return diff > 0 ? diff : 1;
   };
 
@@ -155,25 +178,25 @@ const ConverterRoteiro = () => {
 
     setSaving(true);
     try {
-      // 1. Calcular Datas Exatas para o Backend
-      // O backend espera OffsetDateTime (ISO String)
+      // 3. Prepara o Payload para o Backend Java
       const atividadesPayload = atividades.map((ativ) => {
-        // Cria a data baseada no input de "dataInicio"
-        const dataBase = new Date(dataInicio);
-        // Adiciona os dias (dia 1 = dataInicio, dia 2 = dataInicio + 1, etc)
+        // Calcula a data exata baseada no dia selecionado (Dia 1 = Data Inicio)
+        // Usa UTC para evitar problemas de fuso horário se necessário, ou data local
+        const dataBase = new Date(dataInicio); 
         dataBase.setDate(dataBase.getDate() + (ativ.dia - 1));
         
-        // Ajusta o horário
+        // Define o horário
         const [horas, minutos] = ativ.horario.split(':').map(Number);
         dataBase.setHours(horas, minutos, 0, 0);
 
         return {
           activityId: Number(ativ.id),
-          time: dataBase.toISOString() // Formato aceito pelo Java: "2023-12-10T09:00:00.000Z"
+          // Formato ISO exigido pelo Java (OffsetDateTime): "2023-12-10T09:00:00.000Z"
+          time: dataBase.toISOString() 
         };
       });
 
-      // 2. Montar Payload Estrito conforme DTO Java
+      // O DTO CreateItineraryRequest no Java espera exatamente estes campos:
       const payload = {
         userId: user?.id,
         roadmapId: Number(id),
@@ -186,26 +209,44 @@ const ConverterRoteiro = () => {
       navigate("/itinerarios");
     } catch (error) {
       console.error(error);
-      toast({ title: "Erro ao criar itinerário", variant: "destructive" });
+      toast({ title: "Erro ao criar itinerário", description: "Verifique se as datas e horários são válidos.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className="min-h-screen p-6 flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  if (loading) return (
+    <div className="min-h-screen p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen p-4 sm:p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/roteiros")}><ArrowLeft className="w-5 h-5" /></Button>
-        <div><h1 className="text-2xl font-bold">Converter em Itinerário</h1><p className="text-muted-foreground">{roteiro?.title}</p></div>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/roteiros")}>
+            <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Converter em Itinerário</h1>
+            <p className="text-muted-foreground">{roteiro?.title}</p>
+        </div>
       </div>
 
       <Card className="p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-2"><Label>Data Início</Label><Input type="date" value={dataInicio} onChange={(e) => handleDataChange('inicio', e.target.value)} /></div>
-          <div className="space-y-2"><Label>Data Fim</Label><Input type="date" value={dataFim} onChange={(e) => handleDataChange('fim', e.target.value)} /></div>
-          <div className="space-y-2"><Label>Local</Label><Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Rio de Janeiro" /></div>
+          <div className="space-y-2">
+            <Label>Data Início</Label>
+            <Input type="date" value={dataInicio} onChange={(e) => handleDataChange('inicio', e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Data Fim</Label>
+            <Input type="date" value={dataFim} onChange={(e) => handleDataChange('fim', e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Local</Label>
+            <Input value={local} onChange={(e) => setLocal(e.target.value)} placeholder="Ex: Rio de Janeiro" />
+          </div>
         </div>
       </Card>
 
@@ -226,9 +267,12 @@ const ConverterRoteiro = () => {
         </DndContext>
       </div>
 
-      <Button onClick={handleSave} disabled={saving} className="w-full gap-2"><Save className="w-4 h-4" /> {saving ? "Criando..." : "Criar Itinerário"}</Button>
+      <Button onClick={handleSave} disabled={saving} className="w-full gap-2">
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 
+        {saving ? "Criando..." : "Criar Itinerário"}
+      </Button>
     </div>
   );
 };
 
-export default ConverterRoteiro;
+export default ConverterRoteiro; 
