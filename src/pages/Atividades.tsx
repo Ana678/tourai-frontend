@@ -1,38 +1,63 @@
-import { useState } from "react";
-import { Plus, Loader2, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Loader2, MapPin, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAtividades, Page, Atividade } from "@/services/api/roteirosService";
 import { PaginationControl } from "@/components/common/PaginationControl";
 
+// Hook simples de debounce para evitar muitas requisições
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 const Atividades = () => {
   const { user } = useAuth();
   const userId = user?.id;
+  
+  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
-  const pageSize = 9; // Mostra 9 itens por página (Grid 3x3)
+  const pageSize = 9; 
 
-  // Buscar atividades com paginação
+  // Aplica o debounce no termo de busca (espera 500ms)
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
+  // Reseta para a página 0 quando a busca muda
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
+
+  // 1. BUSCAR ATIVIDADES (No Backend)
   const {
     data: atividadesPage,
     isLoading,
     isError,
+    isPlaceholderData
   } = useQuery<Page<Atividade>>({
-    queryKey: ["atividades", userId, page],
-    queryFn: () => fetchAtividades(userId!, page, pageSize),
+    // Adicionamos debouncedSearch na chave para recarregar quando mudar
+    queryKey: ["atividades", userId, page, debouncedSearch],
+    // Passamos o termo de busca para o serviço
+    queryFn: () => fetchAtividades(userId!, page, pageSize, debouncedSearch),
     enabled: !!userId,
-    placeholderData: keepPreviousData, // Mantém os dados da página anterior enquanto carrega a próxima
+    placeholderData: keepPreviousData, 
   });
 
-  // Extrai o conteúdo e metadados da página
   const atividades = atividadesPage?.content || [];
   const totalPages = atividadesPage?.totalPages || 0;
 
-  // Mostra loading apenas se não houver dados anteriores (primeira carga)
-  if (isLoading && !atividades.length) {
+  // Loading inicial (sem dados na tela e não é uma troca de página)
+  if (isLoading && !isPlaceholderData && !atividades.length) {
     return (
       <div className="flex justify-center items-center min-h-screen p-6">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -51,7 +76,7 @@ const Atividades = () => {
   return (
     <div className="min-h-screen p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Minhas Atividades</h1>
           <p className="text-muted-foreground mt-1">
@@ -59,11 +84,23 @@ const Atividades = () => {
           </p>
         </div>
         <Link to="/atividades/nova">
-          <Button className="gap-2">
+          <Button className="gap-2 w-full sm:w-auto">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Nova Atividade</span>
+            <span className="sm:hidden">Criar</span>
           </Button>
         </Link>
+      </div>
+
+      {/* Barra de Busca */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar atividades por nome"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9 bg-white dark:bg-card"
+        />
       </div>
 
       {/* Lista de atividades */}
@@ -113,7 +150,7 @@ const Atividades = () => {
         ))}
       </div>
 
-      {/* Controle de Paginação */}
+      {/* Paginação */}
       {atividades.length > 0 && (
         <PaginationControl 
           currentPage={page} 
@@ -122,24 +159,30 @@ const Atividades = () => {
         />
       )}
 
-      {/* Empty state (Estado vazio) */}
+      {/* Empty State */}
       {atividades.length === 0 && !isLoading && (
         <Card className="p-8 text-center space-y-4 border-dashed bg-muted/20">
           <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
-            <Plus className="w-8 h-8 text-muted-foreground" />
+            {searchTerm ? <Search className="w-8 h-8 text-muted-foreground" /> : <Plus className="w-8 h-8 text-muted-foreground" />}
           </div>
           <div>
-            <h3 className="font-semibold mb-2">Nenhuma atividade criada</h3>
+            <h3 className="font-semibold mb-2">
+              {searchTerm ? "Nenhuma atividade encontrada" : "Nenhuma atividade criada"}
+            </h3>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-              Crie sua primeira atividade para incluir nos seus roteiros personalizados.
+              {searchTerm 
+                ? `Não encontramos nada para "${searchTerm}". Tente outro termo.` 
+                : "Crie sua primeira atividade para incluir nos seus roteiros personalizados."}
             </p>
           </div>
-          <Link to="/atividades/nova">
-            <Button className="mt-2 gap-2">
-              <Plus className="w-4 h-4" />
-              Criar Primeira Atividade
-            </Button>
-          </Link>
+          {!searchTerm && (
+            <Link to="/atividades/nova">
+              <Button className="mt-2 gap-2">
+                <Plus className="w-4 h-4" />
+                Criar Primeira Atividade
+              </Button>
+            </Link>
+          )}
         </Card>
       )}
     </div>

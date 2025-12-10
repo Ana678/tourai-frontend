@@ -104,39 +104,30 @@ export const fetchRoteiros = async (
 export const fetchAtividades = async (
   userId: string | number,
   page: number = 0,
-  size: number = 10
+  size: number = 10,
+  search: string = "" // Novo parâmetro
 ): Promise<Page<Atividade>> => {
   if (!userId) {
-     return {
-      content: [],
-      totalPages: 0,
-      totalElements: 0,
-      last: true,
-      size,
-      number: page,
-      first: true,
-      numberOfElements: 0,
-      empty: true
-    };
+     return { content: [], totalPages: 0, totalElements: 0, last: true, size, number: page, first: true, numberOfElements: 0, empty: true };
   }
 
   try {
+    // Passamos o 'search' para o backend
     const response = await api.get<any>('/activities', {
       params: { 
         userId,
         page,
-        size
+        size,
+        search: search || undefined // Só envia se tiver texto
       }
     });
 
     const data = response.data;
 
-    // Caso 1: A API retornou a estrutura de página correta
     if (data && Array.isArray(data.content)) {
       return data as Page<Atividade>;
     }
 
-    // Caso 2: Fallback se a API retornar um array direto (compatibilidade)
     if (Array.isArray(data)) {
         return {
             content: data as Atividade[],
@@ -151,18 +142,7 @@ export const fetchAtividades = async (
         };
     }
 
-    console.warn("A API /activities não retornou uma estrutura esperada.", data);
-    return {
-      content: [],
-      totalPages: 0,
-      totalElements: 0,
-      last: true,
-      size,
-      number: page,
-      first: true,
-      numberOfElements: 0,
-      empty: true
-    };
+    return { content: [], totalPages: 0, totalElements: 0 } as any;
 
   } catch (error) {
     console.error("Erro ao buscar atividades:", error);
